@@ -33,6 +33,37 @@ test('probe preparation creates a fresh operation-bound unsigned request and exa
   assert.equal(probeReview(c,req,0,1001).remainingLedgers,59);
   assert.throws(()=>validateRequest(c,req as unknown as Request,0),/cannot use transfer/);
 });
+test('probe duration accepts 10 through 360 ledgers and rejects invalid bounds and numbers',()=>{
+  const {entry,tx,req}=fixture();
+  for(const duration of [10,360]) {
+    const config={...c,expirationLedgers:duration};
+    const proposal=buildProbeRequest(config,tx,[entry],0,1000);
+    assert.equal(proposal.expirationLedger,1000+duration);
+    assert.equal(probeReview(config,proposal,0,1000).remainingLedgers,duration);
+  }
+  for(const duration of [9,0,-1,361,10.5,NaN,Infinity,-Infinity]) {
+    const config={...c,expirationLedgers:duration};
+    assert.throws(()=>buildProbeRequest(config,tx,[entry],0,1000),/expiration/);
+    assert.throws(()=>validateProbeRequest(config,req,0,1001),/expiration/);
+  }
+});
+test('360-ledger review rejects expired proposals and preserves the five-ledger safety buffer',()=>{
+  const {entry,tx}=fixture(),config={...c,expirationLedgers:360};
+  const req=buildProbeRequest(config,tx,[entry],0,1000);
+  assert.equal(probeReview(config,req,0,1354).remainingLedgers,6);
+  for(const ledger of [1355,1356,1360,1361])assert.throws(()=>validateProbeRequest(config,req,0,ledger),/expiration/);
+});
+test('expiration is included before challenge derivation; changing config cannot extend an existing proposal',()=>{
+  const {entry,tx,req}=fixture();
+  const changedEntry=withCredentials(xdr.SorobanAuthorizationEntry.fromXDR(req.entryXdr,'base64'),{signatureExpirationLedger:req.expirationLedger+1});
+  assert.throws(()=>validateProbeRequest(c,{...req,entryXdr:changedEntry.toXDR('base64'),expirationLedger:req.expirationLedger+1},0,1001),/challenge/);
+  const config={...c,expirationLedgers:61};
+  const changed=buildProbeRequest(config,tx,[entry],0,1000);
+  assert.notEqual(changed.challenge,req.challenge);
+  assert.equal(changed.challenge,challenge(changedEntry,[0]).toString('base64url'));
+  assert.throws(()=>validateProbeRequest(config,req,0,1001),/expiration/);
+  assert.throws(()=>validateProbeRequest(c,changed,0,1001),/expiration/);
+});
 test('probe rejects changed operation bodies, extra calls, contract IDs and preexisting signatures',()=>{
   const {req,entry,tx}=fixture();
   for(const field of ['account','verifier'] as const) assert.throws(()=>validateProbeRequest({...c,[field]:v[2]},req,0,1001));

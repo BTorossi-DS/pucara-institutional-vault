@@ -1,10 +1,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {SorobanDataBuilder,scValToNative,xdr} from '@stellar/stellar-sdk';
+import {Account,BASE_FEE,SorobanDataBuilder,Transaction,TransactionBuilder,scValToNative,xdr} from '@stellar/stellar-sdk';
 import type {rpc} from '@stellar/stellar-sdk';
 import {simulateProbe} from './cli.ts';
 import type {ProbeSimulationServices} from './cli.ts';
-import {credentials} from './auth.ts';
+import {NETWORK,challenge,credentials,withCredentials} from './auth.ts';
+import {probeReview,validateProbeRequest} from './auth-probe.ts';
 import {ProbeSession,authorizedProbeOperation,validateProbeAssertion,proposalId,probeReport} from './probe-authorization.ts';
 import {probeFixture} from './fixtures/probe.ts';
 
@@ -65,6 +66,104 @@ test('complete session passes exactly two same-proposal assertions to simulation
   const report=await session.simulate(async(r,a)=>{assert.equal(proposalId(r),session.id);assert.deepEqual(a.map(a=>a.role),['ceo','cfo']);return probeReport(r,'PASS',null);});
   assert.equal(report.simulation,'PASS');assert.equal(session.status().completed,true);
   await assert.rejects(session.simulate(async r=>probeReport(r,'PASS',null)),/Two/);
+});
+test('360-ledger capture rejects five or fewer remaining ledgers without persisting an assertion',async()=>{
+  const {c,req,assertion}=probeFixture(360),a=assertion('ceo');
+  for(const remaining of [5,4,1,0,-1]) {
+    let ledger=req.preparedAtLedger+1,persisted=0;
+    const session=new ProbeSession(c,req,async()=>({ledger,summary:{}}));
+    await session.review();await session.options('ceo');
+    ledger=req.expirationLedger-remaining;
+    await assert.rejects(session.capture(a,()=>persisted++),/expiration/);
+    assert.equal(persisted,0);assert.deepEqual(session.status().captured,[]);
+    await assert.rejects(session.review(),/expiration/);
+  }
+});
+test('360-ledger sessions accept both officers beyond 120 elapsed ledgers and keep an immutable proposal',async()=>{
+  const {c,req,assertion}=probeFixture(360),ceo=assertion('ceo'),cfo=assertion('cfo');
+  const originalChallenge=req.challenge;
+  let ledger=req.preparedAtLedger+1,persisted=0;
+  const session=new ProbeSession(c,req,async()=>({ledger,summary:{}}));
+  const id=session.id;
+  await session.review();
+  ledger=req.preparedAtLedger+121;
+  assert.equal((await session.options('ceo')).challenge,originalChallenge);
+  await session.capture(ceo,()=>persisted++);
+  ledger=req.expirationLedger-6;
+  // Caller mutation cannot change the session's configuration or proposal.
+  c.expirationLedgers=10;req.expirationLedger=ledger;req.challenge='caller mutation';
+  assert.equal((await session.options('cfo')).challenge,originalChallenge);
+  await session.capture(cfo,()=>persisted++);
+  const report=await session.simulate(async(r,a)=>{
+    assert.equal(r.challenge,originalChallenge);assert.equal(a.length,2);return probeReport(r,'PASS',null);
+  });
+  assert.equal(report.simulation,'PASS');assert.equal(persisted,2);assert.equal(session.id,id);
+});
+test('changing expiration requires new assertions even if the replacement proposal challenge is recomputed',()=>{
+  const {c,req,assertion}=probeFixture(360),ceo=assertion('ceo'),cfo=assertion('cfo');
+  const config={...c,expirationLedgers:359};
+  const entry=withCredentials(xdr.SorobanAuthorizationEntry.fromXDR(req.entryXdr,'base64'),{signatureExpirationLedger:req.expirationLedger-1});
+  const changed={...req,entryXdr:entry.toXDR('base64'),expirationLedger:req.expirationLedger-1,challenge:challenge(entry,[0]).toString('base64url')};
+  validateProbeRequest(config,changed,0,1001);
+  assert.notEqual(changed.challenge,req.challenge);assert.notEqual(proposalId(changed),proposalId(req));
+  for(const a of [ceo,cfo]) {
+    assert.throws(()=>validateProbeAssertion(config,changed,a),/challenge/);
+    const client=JSON.parse(Buffer.from(a.clientDataJSON,'base64').toString('utf8'));
+    const forged={...a,clientDataJSON:Buffer.from(JSON.stringify({...client,challenge:changed.challenge})).toString('base64')};
+    assert.throws(()=>validateProbeAssertion(config,changed,forged),/signature/);
+  }
+});
+test('an expired immutable session cannot be refreshed by rewriting the caller proposal and expiration',async()=>{
+  const {c,req,assertion}=probeFixture(360),a=assertion('ceo');
+  let ledger=req.preparedAtLedger+1,persisted=0;
+  const session=new ProbeSession(c,req,async()=>({ledger,summary:{}}));
+  const id=session.id;
+  await session.review();await session.options('ceo');
+  ledger=req.expirationLedger+1;
+  const entry=withCredentials(xdr.SorobanAuthorizationEntry.fromXDR(req.entryXdr,'base64'),{signatureExpirationLedger:req.expirationLedger+360});
+  req.preparedAtLedger+=360;req.expirationLedger+=360;
+  req.entryXdr=entry.toXDR('base64');req.challenge=challenge(entry,[0]).toString('base64url');
+  validateProbeRequest(c,req,0,ledger);
+  assert.notEqual(proposalId(req),id);
+  await assert.rejects(session.capture(a,()=>persisted++),/expiration/);
+  await assert.rejects(session.review(),/expiration/);
+  assert.equal(session.id,id);assert.equal(persisted,0);
+});
+test('360-ledger enforce simulation rebuilds a fresh transaction after the discovery envelope expires',async()=>{
+  const {c,req,assertion}=probeFixture(360);
+  const discovery=xdr.TransactionEnvelope.fromXDR(req.unsignedEnvelopeXdr,'base64');
+  if(discovery.type!=='envelopeTypeTx')throw Error('v1');
+  const expired=new xdr.Transaction({...discovery.v1.tx,cond:xdr.Preconditions.precondTime(new xdr.TimeBounds({minTime:0n,maxTime:1n}))});
+  req.unsignedEnvelopeXdr=xdr.TransactionEnvelope.envelopeTypeTx(new xdr.TransactionV1Envelope({tx:expired,signatures:[]})).toXDR('base64');
+  const ledger=req.preparedAtLedger+180;
+  const original=credentials(xdr.SorobanAuthorizationEntry.fromXDR(req.entryXdr,'base64'));
+  let builds=0,simulations=0;
+  const services:ProbeSimulationServices={
+    review:async()=>({ledger,summary:probeReview(c,req,0,ledger)}),
+    transaction:async(config,op)=>{
+      builds++;assert.equal(config,c);
+      return new TransactionBuilder(new Account(c.feePayer,expired.seqNum.toString()),{fee:BASE_FEE,networkPassphrase:NETWORK})
+        .addOperation(op).setTimeout(300).build();
+    },
+    simulate:async(tx,_resources,mode,upgraded)=>{
+      if(!(tx instanceof Transaction))throw Error('Expected v1 transaction');
+      simulations++;assert.equal(mode,'enforce');assert.equal(upgraded,false);assert.equal(tx.signatures.length,0);
+      assert.notEqual(tx.toXDR(),req.unsignedEnvelopeXdr);assert.notEqual(tx.sequence,expired.seqNum.toString());
+      assert.ok(Number(tx.timeBounds!.maxTime)>Date.now()/1000);
+      const envelope=xdr.TransactionEnvelope.fromXDR(tx.toXDR(),'base64');
+      if(envelope.type!=='envelopeTypeTx')throw Error('v1');
+      const body=envelope.v1.tx.operations[0].body;
+      if(body.type!=='invokeHostFunction')throw Error('invoke');
+      const auth=body.invokeHostFunctionOp.auth;assert.equal(auth.length,1);
+      assert.equal(credentials(auth[0]).nonce,original.nonce);
+      assert.equal(credentials(auth[0]).signatureExpirationLedger,original.signatureExpirationLedger);
+      assert.equal(challenge(auth[0],[0]).toString('base64url'),req.challenge);
+      return {id:'fresh',latestLedger:ledger,events:[],_parsed:true,minResourceFee:'1000',
+        transactionData:new SorobanDataBuilder().setResourceFee('1000'),result:{auth:[],retval:xdr.ScVal.scvVoid()}};
+    },
+  };
+  const report=await simulateProbe(c,req,[assertion('ceo'),assertion('cfo')],services);
+  assert.equal(report.simulation,'PASS');assert.equal(builds,1);assert.equal(simulations,1);
 });
 test('enforce orchestration uses a fresh unsigned transaction, preserves both assertions and reports fees/errors',async()=>{
   const {c,req,assertion,transaction}=probeFixture();const a=[assertion('ceo'),assertion('cfo')];

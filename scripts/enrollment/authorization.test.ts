@@ -7,7 +7,7 @@ import {ProbeSession,probeReport} from '../testnet/probe-authorization.ts';
 import {probeFixture} from '../testnet/fixtures/probe.ts';
 
 test('authorization HTTP mode gates capture behind review, origin, CSRF and immutable proposal; never submits',async()=>{
-  const {c,req,assertion}=probeFixture();let ledger=1001,reviews=0,captured=0,simulations=0,reports=0;
+  const {c,req,assertion}=probeFixture(360);let ledger=1121,reviews=0,captured=0,simulations=0,reports=0;
   const session=new ProbeSession(c,req,async()=>{reviews++;return {ledger,summary:{intent:req.intent,requiredSigners:['ceo','cfo']}};});
   const server=createServer(authorizationHandler(session,req,()=>captured++,async(r,a)=>{
     simulations++;assert.equal(a.length,2);return probeReport(r,'PASS',null,'1100');
@@ -53,6 +53,6 @@ test('authorization HTTP mode gates capture behind review, origin, CSRF and immu
     const result=await post('/authorization/simulate');assert.equal(result.status,200);assert.equal(result.body.report.simulation,'PASS');
     assert.equal(simulations,1);assert.equal(reports,1);
     assert.equal((await post('/authorization/simulate')).status,400);
-    ledger=1115;assert.equal((await post('/authorization/review')).status,400);
+    ledger=req.expirationLedger-5;assert.equal((await post('/authorization/review')).status,400);
   } finally {server.closeAllConnections();server.close();await once(server,'close');}
 });

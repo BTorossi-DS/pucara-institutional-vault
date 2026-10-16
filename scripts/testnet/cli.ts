@@ -5,7 +5,7 @@ import { randomBytes, createPublicKey, verify as verifySignature } from 'node:cr
 import { execFileSync } from 'node:child_process';
 import { Address, BASE_FEE, Contract, Networks, Operation, SorobanDataBuilder, Transaction, TransactionBuilder, rpc, nativeToScVal, scValToNative, xdr } from '@stellar/stellar-sdk';
 import { NETWORK, RPC, bytes, challenge, credentials, withCredentials, external, sha, signaturePayload, struct, u32 } from './auth.ts';
-import { probeOperation, buildProbeRequest, probeReview } from './auth-probe.ts';
+import { PROBE_MAX_EXPIRATION_LEDGERS, probeOperation, buildProbeRequest, probeReview } from './auth-probe.ts';
 import { authorizedProbeOperation, probeReport } from './probe-authorization.ts';
 import type { ProbeAssertion, ProbeReport } from './probe-authorization.ts';
 import type { ProbeRequest } from './auth-probe.ts';
@@ -39,7 +39,7 @@ function workspaceFile(file: string) {
 const load = (file: string) => JSON.parse(readFileSync(workspaceFile(file), 'utf8'));
 const save = (file: string, data: unknown) => writeFileSync(workspaceFile(file), JSON.stringify(data, null, 2) + '\n', {flag: 'wx'});
 const address = (a: string) => new Address(a).toScVal();
-export function configuration(file: string): Config {
+export function configuration(file: string, purpose: 'transfer' | 'probe' = 'transfer'): Config {
   const c: Config = load(file);
   c.origin = process.env.WEBAUTHN_ORIGIN ?? c.origin;
   c.rpId = process.env.WEBAUTHN_RP_ID ?? c.rpId;
@@ -58,7 +58,9 @@ export function configuration(file: string): Config {
     createPublicKey({format:'jwk',key:{kty:'EC',crv:'P-256',x:pk.subarray(1,33).toString('base64url'),y:pk.subarray(33).toString('base64url')}});
   }
   if (c.pair.length !== 2 || new Set(c.pair).size !== 2 || c.pair.some(r => !roles.includes(r))) throw Error('Select two roles');
-  if (!Number.isInteger(c.expirationLedgers) || c.expirationLedgers < 10 || c.expirationLedgers > 120) throw Error('Expiry must be 10..120 ledgers');
+  const maxExpirationLedgers = purpose === 'probe' ? PROBE_MAX_EXPIRATION_LEDGERS : 120;
+  if (!Number.isInteger(c.expirationLedgers) || c.expirationLedgers < 10 || c.expirationLedgers > maxExpirationLedgers)
+    throw Error(`Expiry must be 10..${maxExpirationLedgers} ledgers`);
   if (BigInt(c.maxFeeStroops) <= 0n) throw Error('Positive fee cap required');
   return c;
 }
@@ -246,7 +248,7 @@ export async function simulateProbe(c: Config, req: ProbeRequest, assertions: Pr
 async function main() {
   const [cmd, configFile, ...args] = process.argv.slice(2);
   if (!cmd || !configFile) throw Error('Usage: npm run testnet -- COMMAND CONFIG [ARGS]; see docs/testnet-readiness.md');
-  const c = configuration(configFile);
+  const c = configuration(configFile, ['prepare-probe','review-probe','simulate-probe'].includes(cmd) ? 'probe' : 'transfer');
   await network();
   if (cmd === 'network') console.log(await server.getLatestLedger());
   else if (cmd === 'verify-verifier') { await verifier(c); console.log('Reviewed verifier hash and immutable RP/origin verified'); }

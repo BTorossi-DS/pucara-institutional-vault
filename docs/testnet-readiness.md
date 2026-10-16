@@ -1,15 +1,44 @@
+# Checkpoint 4.6 — current authorization status
+
+Real CEO Touch ID and CFO YubiKey assertions from two distinct registered P-256
+signers validated against the same Soroban authorization challenge on Stellar
+Testnet, rule 0, for exactly `SmartAccount.execute(Verifier, "origin", [])`.
+WebAuthn verification, Soroban `enforce` simulation and an independent enforce
+simulation passed; contract error was `null`. Estimated fees were **2409780** and
+**2412774 stroops** (**0.2409780** and **0.2412774 Testnet XLM**). No probe transaction
+was submitted, no fees were charged, and the nonce remained unconsumed afterward.
+
+The probe-specific window is 360 ledgers (allowed 10–360); the transfer maximum
+remains 120 ledgers (allowed 10–120). Both require the reviewed expiration policy;
+probe capture/simulation requires more than five ledgers remaining. TypeScript
+strict and the complete Node suite pass (25/25 tests).
+
+The first **1 XLM Testnet transfer remains pending**. Simulation does not persist
+state or establish a submitted token transfer. Other signer pairs, operational
+rotation/recovery and transfer event/balance verification remain to be validated.
+Hardware identity and independent custody are not attested. Existing unaudited,
+Testnet-only, localhost binding, TTL and spending-policy limitations still apply;
+Blend V2/USDC remains pending. Real assertions, credential IDs, raw session reports
+and TLS/private key material remain local and excluded from publication.
+
+The implementation and deployment preparation sections below record earlier
+milestones; their pending statements describe those stages. Current deployment
+history and the verified authorization milestone are in
+[testnet-progress.md](testnet-progress.md). Runbook commands require separate
+explicit authorization; publication does not execute them.
+
 # First institutional transaction: preparation and validation
 
-Current checkpoint: **4.5 — WebAuthn Authorization Ready**. See
+Current checkpoint: **4.6 — Real WebAuthn Multisig Authorization Verified**. See
 [checkpoint status](testnet-progress.md) for completed integration, verified local
-HTTPS, test results and remaining real-browser/enforce/1 XLM Testnet work.
-Earlier milestone sections below are historical. Real CEO+CFO assertions and real
-probe enforce acceptance remain pending. Before resuming, confirm trusted HTTPS
-on the Mac and explicitly regenerate/review expired proposals; never reuse
+HTTPS, real CEO+CFO assertion validation, both successful enforce simulations and
+the pending first 1 XLM Testnet transfer. Earlier milestone sections below are
+historical. Any future capture requires trusted HTTPS and an explicitly prepared
+and reviewed valid proposal; never reuse
 assertions across challenges. Local certificates, credentials and proposals are
 not distributed with this repository.
 
-Status: **offline Wasm validated; deployment awaits user configuration and explicit approval**.
+Historical preparation status: **offline Wasm validated; deployment awaited user configuration and explicit approval**.
 No contract was deployed, no transaction was submitted, no Mainnet endpoint was accessed,
 and no commit, push, or history edit was performed. Existing uncommitted work was preserved.
 Contract implementations and their release hashes are unchanged by this milestone.
@@ -402,8 +431,8 @@ only the reviewed authorization probe, not enrollment, transfers, transaction si
 or submission. Normal enrollment remains the default mode. No WebAuthn ceremony is
 started by server startup, page loading, proposal review or automated tests.
 
-The following commands are for the subsequent, explicitly authorized real capture
-step. They have not been used to capture real assertions during implementation:
+The following commands describe the separately authorized real capture workflow.
+Checkpoint 4.6 records its successful completion; do not rerun for publication:
 
 ```sh
 source .tools/env.sh
@@ -411,18 +440,26 @@ export WEBAUTHN_ORIGIN=https://localhost:8443
 export WEBAUTHN_RP_ID=localhost
 export LOCAL_TLS_CERT=/workspaces/stellar-wallet/tmp/tls/localhost.pem
 export LOCAL_TLS_KEY=/workspaces/stellar-wallet/tmp/tls/localhost-key.pem
-npm run testnet -- prepare-probe tmp/account-deploy-step4-24-verification-config.json tmp/step4-28-request.json
-npm run testnet -- review-probe tmp/account-deploy-step4-24-verification-config.json tmp/step4-28-request.json
+npm run testnet -- prepare-probe tmp/authorization-probe-360-config.json tmp/step4-28-request.json
+npm run testnet -- review-probe tmp/authorization-probe-360-config.json tmp/step4-28-request.json
 WEBAUTHN_MODE=authorization \
-  AUTHORIZATION_CONFIG=tmp/account-deploy-step4-24-verification-config.json \
+  AUTHORIZATION_CONFIG=tmp/authorization-probe-360-config.json \
   AUTHORIZATION_REQUEST=tmp/step4-28-request.json \
   npm run enroll
 ```
 
-Use a new proposal filename each time. Consider configuring `expirationLedgers: 120`
-in a reviewed local config **before preparation** to allow time for both officers;
-120 is the existing maximum. Do not change it within an active session. The existing
-certificate must be trusted on the Mac/browser; preserve literal HTTPS localhost:8443
+Use a new proposal filename each time. The probe-specific configuration
+`tmp/authorization-probe-360-config.json` copies the reviewed local config and changes
+only `expirationLedgers` to 360 **before preparation**. Probe preparation, review,
+simulation and authorization sessions accept 10–360 ledgers; token transfers retain
+their 10–120-ledger policy. Capture and simulation require more than five ledgers
+remaining. At five seconds per ledger, 360 ledgers is approximately 30 minutes;
+the actual validity follows ledger numbers. Each WebAuthn prompt still has a
+120-second timeout, and enforce simulation builds a fresh transaction with a
+300-second timeout after collecting approvals. Expiration is part of the signed
+authorization preimage: extending a proposal requires a new challenge and both new
+assertions. A running session cannot replace its immutable proposal or configuration.
+The existing certificate must be trusted on the Mac/browser; preserve literal HTTPS localhost:8443
 when forwarding the existing listener. Do not bypass TLS verification. The server
 requires a successful live `review-probe` equivalent before opening the listener and
 checks hashes, rule 0, signers, RP/origin, current ledger and unused nonce again before
@@ -470,7 +507,7 @@ For a deliberate CLI enforce simulation using saved artifacts from that same
 proposal, the new command is:
 
 ```sh
-npm run testnet -- simulate-probe tmp/account-deploy-step4-24-verification-config.json \
+npm run testnet -- simulate-probe tmp/authorization-probe-360-config.json \
   tmp/authorization-SESSION/proposal.json \
   tmp/authorization-SESSION/ceo-assertion.json \
   tmp/authorization-SESSION/cfo-assertion.json \
@@ -491,4 +528,5 @@ mocked Soroban responses and a mocked browser WebAuthn API. It covers bindings,
 signature validation, distinct quorum serialization, immutable/replayed/expired
 sessions, mandatory enforce mode, unsigned fee payer, fee/error reporting, HTTP
 review/CSRF/Host gating, and absence of automatic browser ceremonies. Real CEO+CFO
-capture and acceptance by the deployed contracts remain pending explicit permission.
+capture and enforce acceptance by the deployed contracts are verified in Checkpoint
+4.6 above; automated tests remain synthetic and do not repeat real ceremonies.

@@ -3,6 +3,8 @@ import { Address, BASE_FEE, Operation, Transaction, TransactionBuilder, xdr } fr
 import { NETWORK, challenge, credentials, withCredentials } from './auth.ts';
 import type { Config } from './cli.ts';
 
+export const PROBE_MAX_EXPIRATION_LEDGERS = 360;
+
 export interface ProbeRequest {
   kind: 'webauthn-authorization-probe-v1';
   network: string; account: string; verifier: string; origin: string; rpId: string;
@@ -57,17 +59,19 @@ export function validateProbeRequest(c: Config, req: ProbeRequest, rule: number,
       !Buffer.from(entry.rootInvocation.function.contractFn.toXDR()).equals(b.invokeHostFunctionOp.hostFunction.invokeContract.toXDR()) ||
       entry.rootInvocation.subInvocations.length !== 0 || req.challenge !== challenge(entry,[rule]).toString('base64url'))
     throw Error('Unexpected probe authorization or challenge');
-  if (!Number.isSafeInteger(req.preparedAtLedger) || !Number.isSafeInteger(ledger) || req.preparedAtLedger > ledger ||
+  if (!Number.isInteger(c.expirationLedgers) || c.expirationLedgers < 10 || c.expirationLedgers > PROBE_MAX_EXPIRATION_LEDGERS ||
+      !Number.isSafeInteger(req.preparedAtLedger) || !Number.isSafeInteger(ledger) || req.preparedAtLedger > ledger ||
       req.expirationLedger !== cred.signatureExpirationLedger ||
       req.expirationLedger !== req.preparedAtLedger + c.expirationLedgers ||
-      req.expirationLedger <= ledger + 5 || req.expirationLedger > ledger + 120)
+      req.expirationLedger <= ledger + 5 || req.expirationLedger > ledger + PROBE_MAX_EXPIRATION_LEDGERS)
     throw Error('Probe expiration outside policy');
   return entry;
 }
 export function buildProbeRequest(c: Config, tx: Transaction, auth: xdr.SorobanAuthorizationEntry[], rule: number, ledger: number): ProbeRequest {
-  if (auth.length !== 1 || !Number.isInteger(c.expirationLedgers) || c.expirationLedgers < 10 || c.expirationLedgers > 120)
+  if (auth.length !== 1 || !Number.isInteger(c.expirationLedgers) || c.expirationLedgers < 10 || c.expirationLedgers > PROBE_MAX_EXPIRATION_LEDGERS)
     throw Error('Unexpected probe authorization count or expiration');
   if (credentials(auth[0]).signature.type !== 'scvVoid') throw Error('Probe must not reuse signatures');
+  // Expiration is part of the signed preimage; set it before deriving the challenge.
   const entry = withCredentials(auth[0],{signatureExpirationLedger:ledger+c.expirationLedgers});
   const req: ProbeRequest = {kind:'webauthn-authorization-probe-v1',network:NETWORK,account:c.account,verifier:c.verifier,
     origin:c.origin,rpId:c.rpId,requiredSigners:signers(c),ruleIds:[rule],entryXdr:entry.toXDR('base64'),

@@ -3,13 +3,16 @@
 Institutional Soroban Smart Account prototype using
 OpenZeppelin Stellar Accounts **0.7.2** and Soroban SDK **26.1.0**.
 
-**Checkpoint 4.5 — WebAuthn Authorization Ready:** the WebAuthn Verifier and
-Institutional Smart Account remain deployed on **Stellar Testnet**. Safe probe
-preparation/review and explicit CEO + CFO browser authorization are implemented;
-TypeScript strict and 16/16 Node tests pass. The authorization page responded over
-verified HTTPS localhost, and the local TLS key permissions are 0600. Certificate
-trust on the Mac, real CEO + CFO assertions, real probe `enforce` acceptance and
-the first **1 XLM Testnet transfer** remain pending.
+**Checkpoint 4.6 — Real WebAuthn Multisig Authorization Verified:** CEO Touch ID
+and CFO YubiKey assertions from two distinct registered P-256 signers validated
+against the same Soroban challenge on **Stellar Testnet**, using rule 0 for exactly
+`SmartAccount.execute(Verifier, "origin", [])`. Soroban `enforce` simulation and an
+independent enforce simulation both passed, with contract error `null` and estimated
+fees of **2,409,780** and **2,412,774 stroops** (0.2409780 and 0.2412774 Testnet XLM).
+No probe transaction was submitted, no fees were charged, and the nonce remained
+unconsumed. TypeScript strict and 25/25 Node tests pass. Probes support a 360-ledger
+expiration window (10–360 ledgers); transfers retain their 10–120-ledger policy. The first **1 XLM
+Testnet transfer remains pending**.
 
 See the [checkpoint status and verified deployments](docs/testnet-progress.md) and
 [authorization runbook](docs/testnet-readiness.md). Expired proposals must be
@@ -46,7 +49,8 @@ No backend custody, public account factory, recovery bypass, production
 credentials or production deployment is included. The browser enrollment utility is for local development. The verifier address supplied at account
 construction is a trusted bootstrap parameter: verify the reviewed executable hash
 and immutable origin/RP configuration before any future account deployment.
-This code is unaudited; real-browser multisig authorization has not yet been validated.
+The contracts and integration code are unaudited; real-browser multisig authorization is verified only for the
+Testnet probe simulation, not a submitted token transfer.
 All network integration must explicitly select **Stellar Testnet**.
 
 The repository includes [compiled-Wasm validation and the Testnet runbook](docs/testnet-readiness.md),
@@ -54,6 +58,6 @@ a localhost browser enrollment tool (`npm run enroll`), and Testnet-only transac
 preparation scripts. Earlier milestone documents describe their state at the time;
 the [Testnet checkpoint](docs/testnet-progress.md) records current deployment status.
 Run `bash scripts/validate.sh` for the full native/Wasm/TypeScript build and checks.
-The next milestone is an end-to-end Smart Account operation approved by two real
-passkeys; deployment verification alone does not establish that flow. Blend V2 / USDC
+The next milestone is the separately authorized first 1 XLM Testnet transfer,
+including submission and on-chain result/balance verification. Blend V2 / USDC
 lending remains pending. Every additional transaction requires explicit approval.

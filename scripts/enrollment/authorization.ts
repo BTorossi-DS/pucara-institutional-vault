@@ -48,7 +48,7 @@ export function authorizationHandler(session:ProbeSession, req:ProbeRequest, per
   };
 }
 export async function createAuthorizationMode() {
-  const c:Config=configuration(workspace(process.env.AUTHORIZATION_CONFIG!));
+  const c:Config=configuration(workspace(process.env.AUTHORIZATION_CONFIG!),'probe');
   const req:ProbeRequest=JSON.parse(readFileSync(workspace(process.env.AUTHORIZATION_REQUEST!),'utf8'));
   if(process.env.WEBAUTHN_ORIGIN!==c.origin || process.env.WEBAUTHN_RP_ID!==c.rpId) throw Error('Explicit matching authorization RP/origin required');
   await reviewProbe(c,req); // Same checks as review-probe, before opening the listener.

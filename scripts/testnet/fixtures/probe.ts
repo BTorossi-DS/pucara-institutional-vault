@@ -5,13 +5,13 @@ import type {Config} from '../cli.ts';
 import {NETWORK,sha} from '../auth.ts';
 import {buildProbeRequest,probeOperation} from '../auth-probe.ts';
 import type {ProbeAssertion,ProbeRole} from '../probe-authorization.ts';
-export function probeFixture() {
+export function probeFixture(expirationLedgers = 120) {
   const keys=Array.from({length:3},()=>generateKeyPairSync('ec',{namedCurve:'prime256v1'}));
   const publicKeys=keys.map(k=>{const j=k.publicKey.export({format:'jwk'});return Buffer.concat([
     Buffer.from([4]),Buffer.from(j.x!,'base64url'),Buffer.from(j.y!,'base64url')]).toString('hex');});
   const contract=(n:number)=>Address.contract(Buffer.alloc(32,n)).toString();
   const c:Config={feePayer:'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',account:contract(1),verifier:contract(2),
-    origin:'https://localhost:8443',rpId:'localhost',pair:['ceo','cfo'],expirationLedgers:120,maxFeeStroops:'10000000',
+    origin:'https://localhost:8443',rpId:'localhost',pair:['ceo','cfo'],expirationLedgers,maxFeeStroops:'10000000',
     token:'unused',recipient:'unused',amount:'unused',signers:{ceo:{publicKey:publicKeys[0],credentialId:'Y2Vv'},
       cfo:{publicKey:publicKeys[1],credentialId:'Y2Zv'},treasury_manager:{publicKey:publicKeys[2],credentialId:'dHJlYXN1cnk'}}};
   const transaction=(op:xdr.Operation)=>new TransactionBuilder(new Account(c.feePayer,'5'),{fee:BASE_FEE,networkPassphrase:NETWORK}).addOperation(op).setTimeout(300).build();

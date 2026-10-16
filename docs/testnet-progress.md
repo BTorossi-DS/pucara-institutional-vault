@@ -1,3 +1,55 @@
+# Checkpoint 4.6 — Real WebAuthn Multisig Authorization Verified
+
+Fecha: 2026-10-16. Rama: `feat/smart-account-setup`.
+Base publicada: `62a207009fa0161e2247194ca5972fed26035fbd`.
+Este registro sustituye el estado pendiente del Checkpoint 4.5 conservado debajo.
+No cambia contratos, Wasm, dependencias ni despliegues.
+
+## Evidencia verificada
+
+- CEO Touch ID y CFO YubiKey: assertions reales capturadas y validadas, de dos
+  firmantes P-256 registrados distintos, sobre el mismo challenge Soroban.
+- Red Stellar Testnet, regla 0 (CEO + CFO), operación exacta:
+  `SmartAccount.execute(Verifier, "origin", [])`.
+- Verificación WebAuthn exitosa; simulación Soroban `enforce`: **PASS**.
+- Simulación enforce independiente: **PASS**. Error de contrato: `null`.
+- Fees estimados: **2409780** y **2412774 stroops**, equivalentes a **0.2409780** y
+  **0.2412774 XLM Testnet**. Son estimaciones de simulación, no fees cobrados.
+- No se envió ninguna transacción del probe, no se cobraron fees y el nonce
+  permaneció sin consumir después de la simulación.
+
+## Política de expiración y checks
+
+El probe usa una ventana de 360 ledgers (rango permitido 10–360), configurada antes
+de preparar el challenge. Las transferencias conservan el máximo de 120 ledgers
+(rango 10–120). Captura y simulación exigen más de cinco ledgers restantes.
+Cambiar la expiración cambia el challenge y requiere ambas assertions nuevas;
+una sesión conserva su propuesta inmutable. La simulación construye una transacción
+nueva con timeout de 300 segundos; no reutiliza la vigencia del envelope de discovery.
+
+- TypeScript strict: **PASS** (`npm run typecheck`).
+- Suite Node completa: **25/25 PASS** (`npm test`), con fixtures sintéticos.
+- `git diff --check`: **PASS**.
+
+## Límites y siguiente paso
+
+La primera transferencia de **1 XLM Testnet sigue pendiente**: no se afirma ningún
+movimiento real de tokens. Simular autorización no persiste cambios ni demuestra
+una transferencia enviada y confirmada. Las otras parejas del quorum, rotación,
+recuperación y verificación de balances/eventos requieren validación adicional.
+No hay attestation que certifique hardware o independencia de custodios; permanecen
+el binding local de desarrollo, las limitaciones de TTL/archivo, la ausencia de
+límites de gasto y la integración Blend V2/USDC pendiente. Prototipo sin auditoría,
+solo Testnet, sin garantía de producción.
+
+Solo se publican código, tests sintéticos y documentación resumida. No se publican
+`tmp/`, assertions reales, credential IDs reales, claves, certificados TLS ni
+reportes crudos de sesión. Esta publicación no genera challenges ni ceremonias,
+no firma ni envía transacciones, no financia cuentas ni realiza transferencias.
+Se detiene el trabajo después de publicar este checkpoint.
+
+---
+
 # Checkpoint 4.5 — WebAuthn Authorization Ready
 
 Fecha: 2026-10-16. Rama: `feat/smart-account-setup`.
