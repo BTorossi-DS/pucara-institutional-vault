@@ -24,4 +24,4 @@ Run `npm ci`, then `npm run enroll` for enrollment at `http://localhost:8080`. F
 
 ## Delivery
 
-Based on `feat/smart-account-setup` at `cb99d85`. The connected GitHub account reports `push: false`; the local branch and patch can be reviewed and applied by a maintainer. Target this feature branch, not the empty bootstrap `main`, when opening the frontend PR.
+Based on `feat/smart-account-setup` at `cb99d85`. The frontend is published on `feat/pucara-frontend` for maintainer review. The standalone ZIP and patch are also available from the delivery chat. Target this feature branch, not the empty bootstrap `main`, when opening the frontend PR.
