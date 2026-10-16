@@ -1,13 +1,39 @@
 <!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Institutional Vault — Development Enrollment</title>
-<body><main><h1>Institutional passkey enrollment</h1>
-<p>Development only. Each officer must use their own authenticator. Register and confirm possession of one passkey per role. Private keys stay with the authenticator.</p>
-<p id="binding"></p>
-<button data-role="ceo">Enroll CEO</button>
-<button data-role="cfo">Enroll CFO</button>
-<button data-role="treasury_manager">Enroll Treasury Manager</button>
-<p id="status" role="status"></p><pre id="registrations"></pre>
-<button id="download" disabled>Download three public registrations</button>
-<p>Localhost registrations cannot be reused for a different RP-ID. Enrollment does not prove that three different people or devices control the keys. Coordinate independent custody.</p>
-</main><script src="/client.js"></script></body></html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PUCARÁ · Registro de firmantes</title><link rel="icon" href="/assets/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/pucara.css"></head>
+
+<body><a class="skip" href="#main">Saltar al contenido</a><div class="layout"><aside class="sidebar"><img class="brand" src="/assets/logo.svg" alt="PUCARÁ" width="152" height="108"><div><p class="eyebrow">Custodia institucional</p>
+<h2>Decisiones compartidas</h2>
+</div>
+<nav aria-label="Sesión actual"><span class="nav-item" aria-current="page">Registro de passkeys</span></nav>
+<p class="sidebar-note">Cada persona autoriza con su propia passkey.<br>Las claves privadas permanecen en el autenticador.</p>
+</aside>
+<main class="workspace" id="main"><div class="topbar"><span class="badge">Stellar Testnet</span><span>Entorno de desarrollo · Activos sin valor real</span></div>
+<p class="eyebrow">Configuración del equipo</p>
+<h1>Una bóveda. Tres responsables.</h1>
+<p class="intro">Registrá una passkey por rol y confirmá su posesión. Cada responsable debe usar su propio autenticador y verificar el diálogo que abre el navegador.</p>
+<section class="panel stone" aria-labelledby="session-title"><h2 id="session-title">Tu sesión de registro</h2>
+<p id="binding">Consultando el origen y el RP-ID…</p>
+<p class="notice">El registro en localhost no puede reutilizarse en otro RP-ID. Registrar tres claves no demuestra que pertenezcan a personas o dispositivos distintos: coordiná su custodia independiente.</p>
+</section>
+<section aria-label="Firmantes" class="grid"><article class="panel officer"><span class="avatar" aria-hidden="true">01</span><h2>Dirección general</h2>
+<p>CEO · Responsable institucional.</p>
+<button type="button" data-role="ceo" disabled>Registrar passkey del CEO</button></article>
+<article class="panel officer"><span class="avatar" aria-hidden="true">02</span><h2>Dirección financiera</h2>
+<p>CFO · Responsable financiero.</p>
+<button type="button" data-role="cfo" disabled>Registrar passkey del CFO</button></article>
+<article class="panel officer"><span class="avatar" aria-hidden="true">03</span><h2>Tesorería</h2>
+<p>Treasury Manager · Tercer firmante.</p>
+<button type="button" data-role="treasury_manager" disabled>Registrar passkey de Tesorería</button></article>
+</section>
+<section class="panel" aria-labelledby="result-title"><h2 id="result-title">Estado del registro</h2>
+<p id="status" role="status" aria-live="polite">Cargando la configuración de la sesión…</p>
+<details><summary>Ver registros públicos</summary><pre id="registrations" aria-label="Registros públicos">Todavía no hay registros cargados.</pre>
+</details>
+<div class="actions"><button type="button" id="download" disabled>Descargar los tres registros públicos</button></div>
+</section>
+<footer>PUCARÁ · Custodia compartida. Las aprobaciones requieren acciones explícitas de cada firmante.</footer>
+</main>
+</div>
+<script src="/client.js"></script></body>
+</html>

@@ -1,16 +1,35 @@
 <!doctype html>
-<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Institutional Vault — Testnet authorization</title>
-<body><main><h1>Testnet authorization</h1>
-<p>Review the operation and challenge with both officers. Each officer must use their own registered passkey. Transfer approval capture stops after validation; finalization and submission are separate. Probe simulation is available only for probes.</p>
-<pre id="proposal"></pre>
-<button id="review" disabled>Validate and review this proposal</button>
-<pre id="reviewed"></pre>
-<p><label><input id="confirm" type="checkbox" disabled>I reviewed the contract IDs, network, operation, CEO + CFO rule and challenge against my independent proposal copy.</label></p>
-<button data-role="ceo" disabled>Approve with CEO Touch ID</button>
-<button data-role="cfo" disabled>Approve with CFO YubiKey</button>
-<p>Use the credential selected by the browser. Hardware type is an operator check; enrollment does not attest the device model or prove separate human custody.</p>
-<button id="simulate" disabled>Simulate both approvals on Testnet</button>
-<p id="status" role="status"></p><pre id="report"></pre>
-<p>If the proposal expires, stop this session and prepare a new proposal. Existing assertions cannot be moved to another challenge.</p>
-</main><script src="/client.js"></script></body></html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PUCARÁ · Autorización</title><link rel="icon" href="/assets/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/pucara.css"></head>
+
+<body><a class="skip" href="#main">Saltar al contenido</a><div class="layout"><aside class="sidebar"><img class="brand" src="/assets/logo.svg" alt="PUCARÁ" width="152" height="108"><div><p class="eyebrow">Custodia institucional</p>
+<h2>Decisiones compartidas</h2>
+</div>
+<nav aria-label="Sesión actual"><span class="nav-item" aria-current="page">Revisión y autorización</span></nav>
+<p class="sidebar-note">Cada persona autoriza con su propia passkey.<br>Las claves privadas permanecen en el autenticador.</p>
+</aside>
+<main class="workspace" id="main"><div class="topbar"><span class="badge">Stellar Testnet</span><span>Entorno de desarrollo · Activos sin valor real</span></div>
+<p class="eyebrow">Operación compartida</p>
+<h1>Revisá. Confirmá. Autorizá.</h1>
+<p class="intro">Compará la operación y el desafío con tu copia independiente de la propuesta. Cada responsable debe usar su passkey registrada. Capturar aprobaciones no envía una transferencia: la finalización y el envío son pasos separados.</p>
+<ol class="steps" aria-label="Pasos de autorización"><li>Revisar propuesta</li><li>Confirmar datos</li><li>Autorizar con passkey</li></ol>
+<section class="panel" aria-labelledby="proposal-title"><h2 id="proposal-title">1. Propuesta de la sesión</h2>
+<pre id="proposal" aria-label="Datos de la propuesta">Cargando propuesta…</pre>
+<button type="button" id="review" disabled>Validar y revisar esta propuesta</button><details><summary>Ver resultado de la validación</summary><pre id="reviewed" aria-label="Resultado de revisión">Aún no se validó la propuesta.</pre>
+</details>
+</section>
+<section class="panel stone" aria-labelledby="approval-title"><h2 id="approval-title">2. Confirmación independiente</h2>
+<label class="confirmation"><input id="confirm" type="checkbox" disabled><span>Revisé los contratos, la red, la operación, la regla CEO + CFO y el desafío contra mi copia independiente de la propuesta.</span></label><h2>3. Autorización de cada responsable</h2>
+<div class="actions"><button type="button" data-role="ceo" disabled>Autorizar con passkey del CEO</button><button type="button" data-role="cfo" disabled>Autorizar con passkey del CFO</button></div>
+<p class="notice">Usá la credencial que seleccione el navegador. La comprobación del dispositivo corresponde al operador: el registro no certifica su modelo ni la custodia por personas distintas.</p>
+</section>
+<section class="panel" aria-labelledby="status-title"><h2 id="status-title">Estado de la autorización</h2>
+<p id="status" role="status" aria-live="polite">Cargando la sesión segura…</p>
+<button type="button" id="simulate" class="secondary" disabled hidden>Simular ambas aprobaciones en Testnet</button><pre id="report" aria-label="Informe de simulación">Sin informe de simulación.</pre>
+<p class="notice">Si la propuesta vence, detené esta sesión y prepará una nueva. Las firmas existentes no pueden trasladarse a otro desafío. La simulación está disponible solo para pruebas de autorización.</p>
+</section>
+<footer>PUCARÁ · Custodia compartida. Las aprobaciones requieren acciones explícitas de cada firmante.</footer>
+</main>
+</div>
+<script src="/client.js"></script></body>
+</html>

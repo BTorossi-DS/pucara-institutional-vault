@@ -1,3 +1,4 @@
+import {serveBrandAsset} from './assets.ts';
 // Local enrollment coordinator. Public metadata only; challenges expire in memory.
 import { createServer as httpServer } from 'node:http';
 import type { RequestListener } from 'node:http';
@@ -33,13 +34,14 @@ const handler: RequestListener = async (req,res) => {
   const json = (code:number,data:unknown) => {res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
   try {
     if (req.headers.host !== url.host) return json(403,{error:'Wrong host'});
+    if (serveBrandAsset(req,res)) return;
     if (req.method === 'GET' && req.url === '/') {
       res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store','Content-Security-Policy':"default-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'"});
-      return res.end(readFileSync(resolve(ROOT,'scripts/enrollment/index.html')));
+      return res.end(readFileSync(new URL('./index.html',import.meta.url)));
     }
     if(req.method === 'GET' && req.url === '/client.js') {
       res.writeHead(200,{'Content-Type':'text/javascript','Cache-Control':'no-store'});
-      return res.end(readFileSync(resolve(ROOT,'scripts/enrollment/client.js')));
+      return res.end(readFileSync(new URL('./client.js',import.meta.url)));
     }
     if(req.method === 'GET' && req.url === '/config') return json(200,{origin,rpId,registrations:Object.fromEntries(registrations)});
     if(req.method !== 'POST' || req.headers.origin !== origin || !req.headers['content-type']?.startsWith('application/json')) return json(403,{error:'Same-origin JSON request required'});

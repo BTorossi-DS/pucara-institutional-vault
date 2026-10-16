@@ -30,7 +30,10 @@ test('authorization HTTP mode gates capture behind review, origin, CSRF and immu
     });
     const get=async(path:string,host='localhost:8443')=>send(path,'GET',{host});
     assert.equal((await get('/','evil.example')).status,403);
-    const html=await(await get('/')).text();assert.match(html,/Simulate both approvals/);
+    const html=await(await get('/')).text();assert.match(html,/Simular ambas aprobaciones/);
+    assert.equal((await get('/assets/pucara.css')).status,200);
+    assert.equal((await get('/assets/logo.svg')).status,200);
+    assert.equal((await get('/assets/logo.svg','evil.example')).status,403);
     const js=await(await get('/client.js')).text();assert.match(js,/navigator.credentials.get/);
     const config=await(await get('/config')).json();assert.equal(config.mode,'authorization');
     assert.equal(captured,0);assert.equal(reviews,0);assert.equal(simulations,0);

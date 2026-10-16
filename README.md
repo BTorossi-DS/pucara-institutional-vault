@@ -68,3 +68,7 @@ the [Testnet checkpoint](docs/testnet-progress.md) records current deployment st
 Run `bash scripts/validate.sh` for the full native/Wasm/TypeScript build and checks.
 The first institutional Testnet transfer is confirmed. Blend V2 / USDC lending
 remains pending. Every additional transaction requires explicit approval.
+
+## PUCARÁ browser interface
+
+The enrollment and authorization tools now share the PUCARÁ identity and responsive layout. See [frontend changes, run instructions and validation limits](docs/frontend-pucara.md).

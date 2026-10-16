@@ -7,7 +7,7 @@ const origin='http://localhost:18746';
 const hash=(b:Uint8Array|string)=>createHash('sha256').update(b).digest();
 test('enrollment verifies possession/binding, rejects CSRF, duplicates, replay and invalid assertions',async()=>{
   const child=spawn(process.execPath,['--experimental-strip-types','scripts/enrollment/server.ts'],{
-    cwd:'/workspaces/stellar-wallet',env:{...process.env,WEBAUTHN_ORIGIN:origin,WEBAUTHN_RP_ID:'localhost'},stdio:['ignore','pipe','pipe']});
+    cwd:new URL('../../',import.meta.url),env:{...process.env,WEBAUTHN_ORIGIN:origin,WEBAUTHN_RP_ID:'localhost'},stdio:['ignore','pipe','pipe']});
   try {
     await Promise.race([once(child.stdout,'data'),once(child,'exit').then(()=>{throw Error('Enrollment server exited');}),
       new Promise((_,reject)=>{const t=setTimeout(()=>reject(Error('Server startup timeout')),10000);t.unref();})]);
@@ -17,6 +17,8 @@ test('enrollment verifies possession/binding, rejects CSRF, duplicates, replay a
     };
     const get=async(path:string)=>fetch(origin+path,{});
     assert.equal((await get('/')).status,200);
+    assert.equal((await get('/assets/pucara.css')).status,200);
+    assert.equal((await get('/assets/logo.svg')).status,200);
     assert.equal((await post('/challenge',{role:'ceo'},'https://evil.example')).status,403);
     const keys=generateKeyPairSync('ec',{namedCurve:'prime256v1'});
     const make=(pending:any, options:{origin?:string;rp?:string;flags?:number;badSignature?:boolean;credentialId?:string;key?:ReturnType<typeof generateKeyPairSync>}={})=>{

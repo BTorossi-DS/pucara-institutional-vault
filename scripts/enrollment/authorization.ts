@@ -1,3 +1,4 @@
+import {serveBrandAsset} from './assets.ts';
 import type {RequestListener} from 'node:http';
 import {mkdirSync,readFileSync,realpathSync,writeFileSync} from 'node:fs';
 import {resolve,dirname} from 'node:path';
@@ -31,12 +32,13 @@ export function authorizationHandler(session:ProbeSession|TransferSession, req:P
     const json=(status:number,data:unknown)=>{response.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});response.end(JSON.stringify(data));};
     try {
       if(request.headers.host!=='localhost:8443') return json(403,{error:'Wrong host'});
+      if(serveBrandAsset(request,response)) return;
       if(request.method==='GET' && (request.url==='/' || request.url==='/client.js')) {
         const html=request.url==='/';
         response.writeHead(200,{'Content-Type':html?'text/html':'text/javascript','Cache-Control':'no-store',
           'Content-Security-Policy':"default-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
           'Permissions-Policy':'publickey-credentials-get=(self)','X-Content-Type-Options':'nosniff'});
-        return response.end(readFileSync(resolve(ROOT,'scripts/enrollment',html?'authorization.html':'authorization-client.js')));
+        return response.end(readFileSync(new URL(html?'./authorization.html':'./authorization-client.js',import.meta.url)));
       }
       if(request.method==='GET' && request.url==='/config') return json(200,{mode:'authorization',purpose,origin:proposal.origin,rpId:proposal.rpId,
         intent:proposal.intent,network:proposal.network,ruleIds:proposal.ruleIds,challenge:proposal.challenge,expirationLedger,csrf,...session.status()});

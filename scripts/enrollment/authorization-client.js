@@ -63,4 +63,5 @@ $('simulate').addEventListener('click',async()=>{
   $('proposal').textContent=JSON.stringify({operation:config.intent,network:config.network,requiredSigners:['ceo','cfo'],ruleIds:config.ruleIds,
     origin:config.origin,rpId:config.rpId,challenge:config.challenge,expirationLedger:config.expirationLedger,proposalId:config.proposalId},null,2);
   controls();
+  $('status').textContent='Propuesta cargada. Validá sus datos antes de autorizar.';
 })().catch(error=>{$('status').textContent=error.message;});

@@ -7,10 +7,11 @@ async function post(path,data) {
   const result=await res.json();if(!res.ok)throw Error(result.error);return result;
 }
 let config;
-async function refresh() {
+async function refresh(initial=false) {
   config=await (await fetch('/config')).json();
   $('binding').textContent=`Origin: ${config.origin} | RP-ID: ${config.rpId}`;
   $('registrations').textContent=JSON.stringify(config.registrations,null,2);
+  if(initial)$('status').textContent=Object.keys(config.registrations).length===3?'Los tres registros están disponibles para descargar.':'Elegí un responsable para registrar su passkey.';
   $('download').disabled=Object.keys(config.registrations).length !== 3;
   document.querySelectorAll('[data-role]').forEach(b=>{b.disabled=!!config.registrations[b.dataset.role];});
 }
@@ -21,7 +22,7 @@ document.querySelectorAll('[data-role]').forEach(button=>button.addEventListener
     $('status').textContent=`${role}: use this officer's own authenticator and verify the browser prompt.`;
     const c=await post('/challenge',{role});
     const credential=await navigator.credentials.create({publicKey:{
-      challenge:fromUrl(c.create),rp:{id:c.rpId,name:'Institutional Vault — Development'},
+      challenge:fromUrl(c.create),rp:{id:c.rpId,name:'PUCARÁ — Development'},
       user:{id:fromUrl(c.userId),name:`${role}@${c.rpId}`,displayName:role},
       pubKeyCredParams:[{type:'public-key',alg:-7}],attestation:'none',
       authenticatorSelection:{residentKey:'preferred',userVerification:'required'},timeout:120000,
@@ -43,4 +44,4 @@ $('download').addEventListener('click',()=>{
   const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([JSON.stringify(config.registrations,null,2)],{type:'application/json'}));
   link.download='signers.json';link.click();URL.revokeObjectURL(link.href);
 });
-refresh().catch(error=>{$('status').textContent=error.message;});
+refresh(true).catch(error=>{$('status').textContent=error.message;});
