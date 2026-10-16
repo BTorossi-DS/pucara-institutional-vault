@@ -3,6 +3,17 @@
 Institutional Soroban Smart Account prototype using
 OpenZeppelin Stellar Accounts **0.7.2** and Soroban SDK **26.1.0**.
 
+## Demo y presentación
+
+El video y el deck están reunidos en la carpeta [presentacion/](presentacion/README.md).
+
+| Material | Archivo |
+| --- | --- |
+| Video demo v2 | [Ver o descargar el video MP4](presentacion/pucara-demo-v2.mp4) |
+| Pitch deck | [Abrir el deck PDF](presentacion/pucara-pitch-nea-tech.pdf) |
+
+Material del prototipo en Stellar Testnet. El deck distingue el MVP actual de la v2.0 propuesta: multisig 3 de 5, timelocks y Earn conectado a Blend.
+
 ## VERIFIED ON-CHAIN TRANSACTION
 
 Pucará completed its first institutional **1 XLM Stellar Testnet transfer** with
@@ -72,10 +83,3 @@ remains pending. Every additional transaction requires explicit approval.
 ## PUCARÁ browser interface
 
 The enrollment and authorization tools now share the PUCARÁ identity and responsive layout. See [frontend changes, run instructions and validation limits](docs/frontend-pucara.md).
-
-## Demo y presentación
-
-- [Pitch deck PDF - PUCARÁ](docs/delivery/pucara-pitch-nea-tech.pdf)
-- [Video demo v2 - PUCARÁ (MP4)](docs/delivery/pucara-demo-v2.mp4)
-
-Material de presentación del prototipo Stellar Testnet. El deck distingue las funcionalidades actuales de la v2.0 propuesta.
