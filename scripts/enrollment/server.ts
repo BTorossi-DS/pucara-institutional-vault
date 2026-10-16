@@ -5,6 +5,7 @@ import { createServer as httpsServer } from 'node:https';
 import { readFileSync } from 'node:fs';
 import { randomBytes, createHash, createPublicKey, verify } from 'node:crypto';
 import { resolve } from 'node:path';
+import { createAuthorizationMode } from './authorization.ts';
 const ROOT = '/workspaces/stellar-wallet';
 const origin = process.env.WEBAUTHN_ORIGIN ?? 'http://localhost:8080';
 const rpId = process.env.WEBAUTHN_RP_ID ?? 'localhost';
@@ -73,5 +74,9 @@ const handler: RequestListener = async (req,res) => {
     return json(404,{error:'Not found'});
   } catch(error) {json(400,{error:error instanceof Error ? error.message : 'Enrollment failed'});}
 };
-const server=url.protocol === 'https:' ? httpsServer({cert:workspaceCert(process.env.LOCAL_TLS_CERT!),key:workspaceCert(process.env.LOCAL_TLS_KEY!)},handler) : httpServer(handler);
-server.listen(Number(url.port || (url.protocol==='https:' ? 443 : 80)),'127.0.0.1',()=>console.log(`Enrollment: ${origin}; RP-ID: ${rpId}. Public metadata is kept in memory only.`));
+const mode=process.env.WEBAUTHN_MODE ?? 'enrollment';
+if (!['enrollment','authorization'].includes(mode)) throw Error('Unknown WebAuthn mode');
+if (mode === 'authorization' && origin !== 'https://localhost:8443') throw Error('Authorization requires https://localhost:8443');
+const activeHandler=mode === 'authorization' ? await createAuthorizationMode() : handler;
+const server=url.protocol === 'https:' ? httpsServer({cert:workspaceCert(process.env.LOCAL_TLS_CERT!),key:workspaceCert(process.env.LOCAL_TLS_KEY!)},activeHandler) : httpServer(activeHandler);
+server.listen(Number(url.port || (url.protocol==='https:' ? 443 : 80)),'127.0.0.1',()=>console.log(`${mode}: ${origin}; RP-ID: ${rpId}. No browser ceremonies start automatically.`));

@@ -5,6 +5,10 @@ import { randomBytes, createPublicKey, verify as verifySignature } from 'node:cr
 import { execFileSync } from 'node:child_process';
 import { Address, BASE_FEE, Contract, Networks, Operation, SorobanDataBuilder, Transaction, TransactionBuilder, rpc, nativeToScVal, scValToNative, xdr } from '@stellar/stellar-sdk';
 import { NETWORK, RPC, bytes, challenge, credentials, withCredentials, external, sha, signaturePayload, struct, u32 } from './auth.ts';
+import { probeOperation, buildProbeRequest, probeReview } from './auth-probe.ts';
+import { authorizedProbeOperation, probeReport } from './probe-authorization.ts';
+import type { ProbeAssertion, ProbeReport } from './probe-authorization.ts';
+import type { ProbeRequest } from './auth-probe.ts';
 import type { Assertion } from './auth.ts';
 
 const ROOT = '/workspaces/stellar-wallet';
@@ -149,6 +153,7 @@ async function prepare(c: Config, output: string) {
       expirationLedger: credentials(entry).signatureExpirationLedger}} satisfies Request);
 }
 export function validateRequest(c: Config, req: Request, rule: number) {
+  if ('kind' in req || 'unsignedEnvelopeXdr' in req) throw Error('Probe requests cannot use transfer review/finalization');
   const entry = xdr.SorobanAuthorizationEntry.fromXDR(req.entryXdr, 'base64');
   const body = transfer(c).body;
   if (body.type !== 'invokeHostFunction' || body.invokeHostFunctionOp.hostFunction.type !== 'hostFunctionTypeInvokeContract') throw Error('Expected contract invocation');
@@ -192,6 +197,51 @@ async function finalize(c: Config, requestFile: string, files: string[], output:
   const signedEntry = withCredentials(entry, {signature:signaturePayload(c.verifier,[rule],assertions)});
   // Mandatory second simulation executes __check_auth with actual assertions.
   await unsigned(c, transfer(c,[signedEntry]), output);
+}
+async function unusedProbeNonce(req: ProbeRequest) {
+  const entry = xdr.SorobanAuthorizationEntry.fromXDR(req.entryXdr,'base64');
+  const key = xdr.LedgerKey.contractData(new xdr.LedgerKeyContractData({
+    contract:credentials(entry).address,
+    key:xdr.ScVal.scvLedgerKeyNonce(new xdr.ScNonceKey({nonce:credentials(entry).nonce})),
+    durability:xdr.ContractDataDurability.temporary,
+  }));
+  const result = await server.getLedgerEntries(key);
+  if (result.entries.length !== 0) throw Error('Probe nonce already consumed');
+}
+export async function reviewProbe(c: Config, req: ProbeRequest) {
+  await network();
+  const rule = await quorumRule(c);
+  if (rule !== 0) throw Error('Authorization probe requires on-chain rule 0');
+  const ledger = (await server.getLatestLedger()).sequence;
+  const summary = probeReview(c,req,rule,ledger);
+  await unusedProbeNonce(req);
+  return {ledger,summary};
+}
+export interface ProbeSimulationServices {
+  review: typeof reviewProbe;
+  transaction: (c:Config,op:xdr.Operation)=>Promise<Transaction>;
+  simulate: rpc.Server['simulateTransaction'];
+}
+export async function simulateProbe(c: Config, req: ProbeRequest, assertions: ProbeAssertion[], services: ProbeSimulationServices = {
+  review:reviewProbe,transaction,simulate:server.simulateTransaction.bind(server),
+}): Promise<ProbeReport> {
+  const {ledger} = await services.review(c,req);
+  const operation = authorizedProbeOperation(c,req,assertions,ledger);
+  const tx = await services.transaction(c,operation); // Fresh source sequence/time bounds, zero fee-payer signatures.
+  let result: rpc.Api.SimulateTransactionResponse;
+  try { result = await services.simulate(tx,undefined,'enforce',false); }
+  catch { return probeReport(req,'FAIL','Testnet enforce RPC unavailable'); }
+  if (!rpc.Api.isSimulationSuccess(result)) {
+    // Do not echo diagnostic events containing assertion data.
+    const error = 'error' in result ? String(result.error).split('\n')[0].slice(0,512) : 'Unexpected simulation response';
+    return probeReport(req,'FAIL',error);
+  }
+  if ('restorePreamble' in result && result.restorePreamble) return probeReport(req,'FAIL','Separate restoration required');
+  if (!result.result || result.result.retval.type !== 'scvVoid') return probeReport(req,'FAIL','Unexpected probe simulation return value');
+  const assembled = rpc.assembleTransaction(tx,result).build();
+  try { enforceFeeCap(assembled.fee,c.maxFeeStroops,result.minResourceFee,result.transactionData.build().resourceFee); }
+  catch { return probeReport(req,'FAIL','Simulation fee exceeds configured limit (maximum 1 XLM)',assembled.fee); }
+  return probeReport(req,'PASS',null,assembled.fee);
 }
 async function main() {
   const [cmd, configFile, ...args] = process.argv.slice(2);
@@ -240,6 +290,29 @@ async function main() {
     if (!Number.isInteger(ttl) || ttl < 1) throw Error('Invalid TTL');
     const data = new SorobanDataBuilder().setFootprint(cmd === 'ttl' ? keys : [], cmd === 'restore' ? keys : []).build();
     await unsigned(c,cmd === 'ttl' ? Operation.extendFootprintTtl({extendTo:ttl}) : Operation.restoreFootprint(),args[1],data);
+  } else if (cmd === 'prepare-probe') {
+    const output = workspaceFile(args[0]);
+    if (!output.startsWith(ROOT + '/tmp/')) throw Error('Probe artifacts must remain under tmp/');
+    const op = probeOperation(c);
+    const rule = await quorumRule(c);
+    const tx = await transaction(c,op);
+    const sim = await simulate(tx,'record');
+    const built = rpc.assembleTransaction(tx,sim).build();
+    enforceFeeCap(built.fee,c.maxFeeStroops,sim.minResourceFee,sim.transactionData.build().resourceFee);
+    const req = buildProbeRequest(c,tx,sim.result?.auth ?? [],rule,sim.latestLedger);
+    await unusedProbeNonce(req);
+    save(output,req);
+    console.log(JSON.stringify(probeReview(c,req,rule,sim.latestLedger),null,2));
+  } else if (cmd === 'review-probe') {
+    const req: ProbeRequest = load(args[0]);
+    console.log(JSON.stringify((await reviewProbe(c,req)).summary,null,2));
+  } else if (cmd === 'simulate-probe') {
+    const output = workspaceFile(args[3]);
+    if (!output.startsWith(ROOT + '/tmp/')) throw Error('Probe artifacts must remain under tmp/');
+    const report = await simulateProbe(c,load(args[0]),[load(args[1]),load(args[2])]);
+    save(output,report);
+    console.log(JSON.stringify(report,null,2));
+    if (report.simulation !== 'PASS') process.exitCode = 1;
   } else if (cmd === 'review') {
     const req: Request = load(args[0]);
     const entry = validateRequest(c,req,await quorumRule(c));

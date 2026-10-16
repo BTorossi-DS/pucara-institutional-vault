@@ -1,3 +1,82 @@
+# Checkpoint 4.5 — WebAuthn Authorization Ready
+
+Fecha: 2026-10-16. Rama: `feat/smart-account-setup`.
+Base publicada: Checkpoint 4 (`8475bc1b858e7c0b8950e719da7be91d2f9b9683`).
+Este checkpoint conserva los contratos e instancias Testnet del registro histórico
+incluido debajo. No modifica contratos Rust, Wasm, dependencias ni despliegues.
+
+## Integración completada
+
+- `prepare-probe` y `review-probe` reconocen exclusivamente la operación
+  `SmartAccount.execute(Verifier, "origin", [])`, con CEO + CFO, regla 0,
+  RP-ID `localhost` y origin `https://localhost:8443`.
+- Se verifican red Testnet, hashes revisados, contratos, firmantes, árbol exacto,
+  nonce no consumido, expiración, challenge y cuerpo de la operación. El challenge
+  Soroban vincula invocación, red, nonce, expiración y regla; no vincula campos de
+  transporte como secuencia del fee payer. El límite sigue en 1 XLM de fees Testnet.
+- El servidor de enrolamiento ofrece un modo de autorización explícito, con revisión
+  antes de la captura, credenciales por rol, UP/UV, binding de origin/RP/challenge,
+  validación P-256 y normalización DER/low-S mediante las dependencias existentes.
+- Cada sesión fija una propuesta; no reemplaza challenges ni sobrescribe un rol
+  aceptado. Cargar la página o revisar no inicia WebAuthn. Ambas aprobaciones
+  requieren acciones manuales independientes sobre el mismo challenge.
+- `simulate-probe` y el botón de simulación construyen una transacción nueva sin
+  firmas del fee payer, reutilizan el payload Soroban existente y solicitan
+  `authMode=enforce`. Producen un reporte; este checkpoint no demuestra todavía
+  aceptación del quorum real por los contratos desplegados.
+- El flujo de transferencias se conserva y rechaza propuestas probe.
+
+## HTTPS y validación
+
+El preflight 4.28B.2 preparó y revisó una propuesta local y arrancó el servidor
+existente en modo autorización. La página, JavaScript y configuración devolvieron
+HTTP 200 con validación TLS activa y confianza explícita en el certificado local
+existente. No se desactivó TLS. El certificado cubre localhost y está vigente.
+La clave TLS local se restringió a 0600 sin cambiar su contenido; no se versiona.
+El contenedor no confía en la CA por defecto y la confianza en el navegador del Mac
+sigue pendiente. El servidor se detuvo después de peticiones GET, sin ceremonias.
+
+Checks de publicación:
+
+- TypeScript strict: PASS (`npm run typecheck`).
+- Node: 16/16 PASS (`npm test`): firmas sintéticas en memoria, serialización de quorum,
+  rechazos por binding, expiración/replay, sesiones inmutables, gating HTTP/CSRF/Host,
+  ausencia de inicio automático de WebAuthn, enforce obligatorio y límite de fees.
+- Sintaxis JavaScript del cliente y `git diff --check`: PASS.
+- Las pruebas de integración usan navegador y RPC simulados; no son una prueba real
+  del CEO Touch ID y CFO YubiKey contra Testnet.
+- Se mantienen los hashes Wasm del Checkpoint 4; no se reconstruyeron contratos.
+
+## Límites, artefactos y siguiente paso
+
+Solo se publican código, tests sintéticos y documentación. Quedan fuera de Git:
+`tmp/`, registros de passkeys reales, propuestas/challenges, assertions, reportes
+locales, envelopes, certificados, claves TLS, identidades CLI, seeds y secretos.
+Los archivos de test contienen identidades sintéticas; las claves privadas de los
+fixtures se generan en memoria y nunca se serializan. No se cambió `.gitignore`.
+
+Estado pendiente:
+
+1. Confirmar HTTPS confiable en el Mac, preservando el origin literal localhost.
+2. En una etapa autorizada, consultar el ledger y regenerar explícitamente cualquier
+   propuesta vencida, usando un nombre nuevo y ejecutando `review-probe` otra vez.
+   El servidor requiere más de cinco ledgers restantes. No reutilizar automáticamente
+   las propuestas del preflight ni trasladar assertions entre challenges.
+3. Capturar CEO Touch ID y CFO YubiKey reales sobre la misma propuesta revisada.
+   La independencia de personas/dispositivos es operativa: no hay attestation que
+   certifique el modelo de hardware o la custodia independiente.
+4. Validar ambas assertions y obtener PASS en simulación Soroban `enforce` del probe
+   contra las instancias desplegadas, sin firmar con el fee payer ni enviar.
+5. Después, preparar y autorizar por separado la primera transferencia de **1 XLM
+   Testnet**. Su ejecución sigue pendiente y no está autorizada por esta publicación.
+
+El proyecto sigue siendo un prototipo solo Testnet, sin auditoría y sin garantía de
+producción. Persisten las limitaciones del Checkpoint 4: recuperación, TTL/archivo,
+ausencia de límites de gasto en el contrato, custodia de los roles y Blend V2/USDC
+pendiente. Se pausa el desarrollo tras publicar este checkpoint.
+
+---
+
 # Checkpoint 4 — vault institucional desplegada en Stellar Testnet
 
 Fecha: 2026-10-16. Rama: `feat/smart-account-setup`.

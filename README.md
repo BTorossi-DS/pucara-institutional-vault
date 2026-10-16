@@ -3,11 +3,17 @@
 Institutional Soroban Smart Account prototype using
 OpenZeppelin Stellar Accounts **0.7.2** and Soroban SDK **26.1.0**.
 
-**Checkpoint 4:** both reviewed Wasm artifacts are published and the WebAuthn
-Verifier and Institutional Smart Account instances are deployed on **Stellar
-Testnet**. On-chain checks confirmed the three role keys, 2-of-3 rules and verifier
-binding. See [verified Testnet deployments](docs/testnet-progress.md) for final
-contract IDs, transaction hashes, ledgers, actual fees and current limitations.
+**Checkpoint 4.5 — WebAuthn Authorization Ready:** the WebAuthn Verifier and
+Institutional Smart Account remain deployed on **Stellar Testnet**. Safe probe
+preparation/review and explicit CEO + CFO browser authorization are implemented;
+TypeScript strict and 16/16 Node tests pass. The authorization page responded over
+verified HTTPS localhost, and the local TLS key permissions are 0600. Certificate
+trust on the Mac, real CEO + CFO assertions, real probe `enforce` acceptance and
+the first **1 XLM Testnet transfer** remain pending.
+
+See the [checkpoint status and verified deployments](docs/testnet-progress.md) and
+[authorization runbook](docs/testnet-readiness.md). Expired proposals must be
+explicitly regenerated and reviewed; assertions cannot cross challenges.
 
 ```bash
 cd /workspaces/stellar-wallet
@@ -40,7 +46,7 @@ No backend custody, public account factory, recovery bypass, production
 credentials or production deployment is included. The browser enrollment utility is for local development. The verifier address supplied at account
 construction is a trusted bootstrap parameter: verify the reviewed executable hash
 and immutable origin/RP configuration before any future account deployment.
-This code is unaudited and passkey enrollment/browser integration is incomplete.
+This code is unaudited; real-browser multisig authorization has not yet been validated.
 All network integration must explicitly select **Stellar Testnet**.
 
 The repository includes [compiled-Wasm validation and the Testnet runbook](docs/testnet-readiness.md),

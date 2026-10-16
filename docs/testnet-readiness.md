@@ -1,5 +1,14 @@
 # First institutional transaction: preparation and validation
 
+Current checkpoint: **4.5 — WebAuthn Authorization Ready**. See
+[checkpoint status](testnet-progress.md) for completed integration, verified local
+HTTPS, test results and remaining real-browser/enforce/1 XLM Testnet work.
+Earlier milestone sections below are historical. Real CEO+CFO assertions and real
+probe enforce acceptance remain pending. Before resuming, confirm trusted HTTPS
+on the Mac and explicitly regenerate/review expired proposals; never reuse
+assertions across challenges. Local certificates, credentials and proposals are
+not distributed with this repository.
+
 Status: **offline Wasm validated; deployment awaits user configuration and explicit approval**.
 No contract was deployed, no transaction was submitted, no Mainnet endpoint was accessed,
 and no commit, push, or history edit was performed. Existing uncommitted work was preserved.
@@ -334,3 +343,152 @@ and choose/fund the test asset and recipient. Then review the concrete unsigned 
 envelopes and give **explicit approval before any submission**. Deployment, real-browser
 quorum collection, live costs, fee-payer signing and on-chain result verification remain
 pending. No deployment approval is assumed from this preparation request.
+
+## Step 4.27 — authorization probe preparation and review
+
+Only this operation is supported by the new commands:
+`SmartAccount.execute(Verifier, "origin", [])`. It requires the CEO + CFO rule,
+`localhost` / `https://localhost:8443`, distinct keys and credential IDs, and a
+fee cap no greater than 10,000,000 stroops (1 Testnet XLM). Use the reviewed local
+configuration containing the deployed account/verifier and public signer metadata.
+Token, recipient and amount placeholders are unused by these commands.
+
+```sh
+source .tools/env.sh
+npm run testnet -- prepare-probe tmp/account-deploy-step4-24-verification-config.json tmp/step4-27-probe-request.json
+npm run testnet -- review-probe tmp/account-deploy-step4-24-verification-config.json tmp/step4-27-probe-request.json
+```
+
+Use a new output filename for each preparation; existing files are never overwritten.
+Preparation checks Testnet, reviewed Wasm hashes, verifier RP/origin and on-chain
+signers/rule, runs a fresh `record` simulation, checks the assembled estimated fee,
+and creates a versioned probe request under `tmp/`. It does not assemble a signed
+or submission-ready transaction. The unsigned envelope records the exact invocation
+used for discovery. Review validates its operation, source, fee, memo, preconditions,
+extension and absence of signatures/auth entries, as well as the exact authorization
+tree, account/verifier, network, signer metadata, rule, nonce-bound challenge and
+expiration. Both commands reject an already consumed nonce. Review repeats the
+on-chain configuration checks and requires more than five ledgers of validity.
+
+The WebAuthn challenge uses the existing Soroban authorization preimage and rule
+encoding. It binds the operation/tree, network, nonce and expiration, not transaction
+transport fields such as the fee payer sequence. The envelope is a checked discovery
+template; Step 4.28 must build a fresh transaction for enforce simulation.
+Review is against a trusted, independently reviewed configuration; a recomputed
+challenge is not evidence of human approval or proof of authenticity of a JSON file.
+
+The review prints exact contract IDs, `execute` / `origin` / empty arguments,
+required roles, rule ID, RP/origin, nonce, expiration and challenge. The request
+contains public signer metadata; do not publish it or use the transfer collector.
+The earlier Step 4.26 inspection artifact has no supported probe version and is
+rejected. Existing `prepare`, `review` and `finalize` remain transfer-specific;
+transfer validation explicitly rejects versioned probe requests. No probe capture
+or finalization command exists in this step.
+
+`record` discovers authorization requirements; it does not prove WebAuthn validity.
+The target is a read, but future enforce execution of account authorization can
+produce simulated nonce/TTL changes. Simulation does not persist those changes.
+Zero account XLM balance does not prevent this probe; no funding is required here.
+
+Before capture: implement probe-specific trusted intent review, independent CEO
+Touch ID and CFO YubiKey assertions, strict binding and signature checks, and a
+fresh unsigned transaction simulated in `enforce`. Regenerate expired proposals;
+never reuse the Step 4.26 challenge. Do not submit transactions as part of this test.
+
+## Step 4.28 — explicit probe authorization mode
+
+The enrollment server now supports `WEBAUTHN_MODE=authorization`. This mode exposes
+only the reviewed authorization probe, not enrollment, transfers, transaction signing
+or submission. Normal enrollment remains the default mode. No WebAuthn ceremony is
+started by server startup, page loading, proposal review or automated tests.
+
+The following commands are for the subsequent, explicitly authorized real capture
+step. They have not been used to capture real assertions during implementation:
+
+```sh
+source .tools/env.sh
+export WEBAUTHN_ORIGIN=https://localhost:8443
+export WEBAUTHN_RP_ID=localhost
+export LOCAL_TLS_CERT=/workspaces/stellar-wallet/tmp/tls/localhost.pem
+export LOCAL_TLS_KEY=/workspaces/stellar-wallet/tmp/tls/localhost-key.pem
+npm run testnet -- prepare-probe tmp/account-deploy-step4-24-verification-config.json tmp/step4-28-request.json
+npm run testnet -- review-probe tmp/account-deploy-step4-24-verification-config.json tmp/step4-28-request.json
+WEBAUTHN_MODE=authorization \
+  AUTHORIZATION_CONFIG=tmp/account-deploy-step4-24-verification-config.json \
+  AUTHORIZATION_REQUEST=tmp/step4-28-request.json \
+  npm run enroll
+```
+
+Use a new proposal filename each time. Consider configuring `expirationLedgers: 120`
+in a reviewed local config **before preparation** to allow time for both officers;
+120 is the existing maximum. Do not change it within an active session. The existing
+certificate must be trusted on the Mac/browser; preserve literal HTTPS localhost:8443
+when forwarding the existing listener. Do not bypass TLS verification. The server
+requires a successful live `review-probe` equivalent before opening the listener and
+checks hashes, rule 0, signers, RP/origin, current ledger and unused nonce again before
+each capture and before simulation. Expired/unreviewed proposals cannot enable capture.
+
+At `https://localhost:8443/`, the operator must:
+
+1. Select **Validate and review this proposal**. Inspect account/verifier IDs,
+   Testnet network, exact `execute` / `origin` / empty arguments, CEO+CFO rule 0,
+   challenge, expiration and proposal ID against an independent proposal copy.
+2. Confirm review and select **Approve with CEO Touch ID**. Only this click requests
+   the CEO credential, with `userVerification: required` and its exact credential ID.
+3. Have the CFO independently review/confirm the same proposal, then select
+   **Approve with CFO YubiKey**. Both buttons use the identical immutable challenge.
+4. After both assertions validate, select **Simulate both approvals on Testnet**.
+   The server constructs a fresh unsigned fee-payer transaction with the exact probe
+   invocation and both authorization signatures, calls `simulateTransaction` with
+   `authMode=enforce`, and enforces the configured fee cap (maximum 1 Testnet XLM).
+
+The server pins the entire proposal using a SHA-256 proposal ID. It validates the
+credential ID, role/public-key mapping, challenge, origin, RP hash, UP/UV, client-data
+size, strict base64/DER encoding and P-256 signature. It uses the existing offline
+RustCrypto DER/low-S normalizer and existing Soroban `signaturePayload` structure.
+No authenticator private key leaves the device. Device model and separate human
+custody cannot be established from these non-attested registrations; the officers
+must select their intended Touch ID / YubiKey credentials and maintain independent
+custody. No new dependency or custom cryptography was added.
+
+The session stores `proposal.json`, `ceo-assertion.json`, `cfo-assertion.json` and
+`simulation-report.json` in a newly created `tmp/authorization-<random>/` directory
+(mode 0700, files 0600). An optional `AUTHORIZATION_OUTPUT_DIR` must already exist
+under `tmp/`. The listener checks Host, exact Origin, JSON content type, session CSRF
+token and proposal ID. It does not offer challenge replacement, submission or an
+endpoint to download assertions. Do not publish these files. A restart creates a
+new session; it does not automatically import captured assertions.
+
+Expired proposals fail closed. Stop and explicitly prepare a new proposal, then
+capture **both** assertions again; no challenge is silently regenerated. WebAuthn
+cancellation allows retrying the same role on the same still-valid challenge, while
+an already accepted role cannot be overwritten or replayed within a session.
+Simulation does not consume an on-chain nonce. A completed browser session permits
+one simulation attempt; a contract FAIL report is not proof of accepted authorization.
+
+For a deliberate CLI enforce simulation using saved artifacts from that same
+proposal, the new command is:
+
+```sh
+npm run testnet -- simulate-probe tmp/account-deploy-step4-24-verification-config.json \
+  tmp/authorization-SESSION/proposal.json \
+  tmp/authorization-SESSION/ceo-assertion.json \
+  tmp/authorization-SESSION/cfo-assertion.json \
+  tmp/step4-28-simulation-report.json
+```
+
+This command rechecks the live review, nonce, expiration and both assertions. It
+never calls `finalize`, signs with the fee payer or submits a transaction. It emits
+only a report with operation, contract IDs, network, roles, rule, challenge digest
+in hex, proposal ID, fee estimate and PASS/FAIL plus a sanitized contract error.
+RPC diagnostics containing assertion bytes are omitted. PASS means enforce
+simulation accepted the probe within the fee cap; it does not demonstrate a token
+transfer or persist state. Existing transfer commands remain separate and reject
+probe requests.
+
+Implementation validation uses synthetic P-256 keys held only in test memory,
+mocked Soroban responses and a mocked browser WebAuthn API. It covers bindings,
+signature validation, distinct quorum serialization, immutable/replayed/expired
+sessions, mandatory enforce mode, unsigned fee payer, fee/error reporting, HTTP
+review/CSRF/Host gating, and absence of automatic browser ceremonies. Real CEO+CFO
+capture and acceptance by the deployed contracts remain pending explicit permission.

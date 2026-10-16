@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Institutional Vault — Testnet authorization</title>
+<body><main><h1>Testnet authorization probe</h1>
+<p>Review the operation and challenge with both officers. Each officer must use their own registered passkey. This page only captures approvals and simulates authorization.</p>
+<pre id="proposal"></pre>
+<button id="review" disabled>Validate and review this proposal</button>
+<pre id="reviewed"></pre>
+<p><label><input id="confirm" type="checkbox" disabled>I reviewed the contract IDs, network, operation, CEO + CFO rule and challenge against my independent proposal copy.</label></p>
+<button data-role="ceo" disabled>Approve with CEO Touch ID</button>
+<button data-role="cfo" disabled>Approve with CFO YubiKey</button>
+<p>Use the credential selected by the browser. Hardware type is an operator check; enrollment does not attest the device model or prove separate human custody.</p>
+<button id="simulate" disabled>Simulate both approvals on Testnet</button>
+<p id="status" role="status"></p><pre id="report"></pre>
+<p>If the proposal expires, stop this session and prepare a new proposal. Existing assertions cannot be moved to another challenge.</p>
+</main><script src="/client.js"></script></body></html>
