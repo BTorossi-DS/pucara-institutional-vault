@@ -72,3 +72,10 @@ remains pending. Every additional transaction requires explicit approval.
 ## PUCARÁ browser interface
 
 The enrollment and authorization tools now share the PUCARÁ identity and responsive layout. See [frontend changes, run instructions and validation limits](docs/frontend-pucara.md).
+
+## Demo y presentación
+
+- [Pitch deck PDF - PUCARÁ](docs/delivery/pucara-pitch-nea-tech.pdf)
+- [Video demo v2 - PUCARÁ (MP4)](docs/delivery/pucara-demo-v2.mp4)
+
+Material de presentación del prototipo Stellar Testnet. El deck distingue las funcionalidades actuales de la v2.0 propuesta.
