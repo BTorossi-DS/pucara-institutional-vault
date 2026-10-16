@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+build/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Private keys and credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*.secret
+secrets/
+credentials/
+
+# Stellar credentials
+.stellar/
+stellar-keys/
+
+# Logs
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# VS Code local settings
+.vscode/
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/

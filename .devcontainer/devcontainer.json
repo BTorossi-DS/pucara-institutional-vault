@@ -1,0 +1,17 @@
+{
+  "name": "Stellar Wallet Development",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22-bookworm",
+  "workspaceFolder": "/workspaces/stellar-wallet",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "OpenAI.chatgpt"
+      ]
+    }
+  },
+  "forwardPorts": [3000],
+  "remoteUser": "node",
+  "updateContentCommand": "node --version && npm --version"
+}
