@@ -1,0 +1,26 @@
+/* Official PUCARÁ identity, adapted from commit 7050210. No operational code. */
+:root {
+  --paper: #F7F5EF;
+  --surface: #FFFFFF;
+  --stone: #E8E4DA;
+  --ink: #292C2B;
+  --muted: #595C58;
+  --accent: #91432D;
+  --hover: #733322;
+  --line: #7A7C76;
+  --focus: #245B88;
+  --status: #245B88;
+}
+.skip { position: absolute; top: -100px; left: 16px; z-index: 3; padding: 12px; background: var(--surface); }
+.skip:focus { top: 12px; }
+.brand img { display: block; width: 152px; height: 108px; object-fit: contain; object-position: left center; }
+.button:hover:enabled { background: var(--hover); }
+.button.secondary:hover:enabled { background: var(--stone); }
+.button:disabled { background: var(--stone); color: var(--muted); border-color: var(--line); opacity: 1; }
+nav button.active { color: var(--accent); }
+.quorum, .balance-card h2 { font-family: Georgia, serif; font-weight: 400; }
+.balance-card h2 { position: relative; z-index: 1; }
+@media (max-width: 640px) {
+  .brand img { width: 120px; height: 82px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }

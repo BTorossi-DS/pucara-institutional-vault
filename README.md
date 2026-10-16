@@ -68,3 +68,13 @@ the [Testnet checkpoint](docs/testnet-progress.md) records current deployment st
 Run `bash scripts/validate.sh` for the full native/Wasm/TypeScript build and checks.
 The first institutional Testnet transfer is confirmed. Blend V2 / USDC lending
 remains pending. Every additional transaction requires explicit approval.
+
+## Public web MVP — Checkpoint F2
+
+The read-only Testnet frontend is in [`frontend/`](frontend/README.md). It includes
+Dashboard, demonstration Transfers, and documented Activity with explorer links.
+For Vercel select **Root Directory `frontend`**, build `npm run build`, and output
+`dist`. No passkeys, credentials, transaction submission or backend are required.
+
+F2 integrates the official PUCARÁ SVG identity from `7050210` into the existing
+F1 app. See the [F2 integration report](docs/frontend-f2.md).
