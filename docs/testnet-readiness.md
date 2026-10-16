@@ -1,4 +1,75 @@
-# Checkpoint 4.6 — current authorization status
+# Checkpoint 4.7 — Transfer Authorization Ready
+
+Current status, 2026-10-16: the protected CEO+CFO transfer authorization workflow
+is implemented and reviewed, and the vault has received exactly **1 native Testnet
+XLM**. **The first outgoing CEO+CFO-authorized institutional transfer remains
+pending.** Funding and the earlier successful authorization probe do not establish
+that this outgoing transfer has executed.
+
+Publication checks: **41/41 Node tests PASS**, **TypeScript strict PASS** and
+**`git diff --check` PASS**. Security review of every selected source, synthetic test
+and documentation file is complete, with no open blocking finding in this scope.
+This is a code review of a Testnet prototype, not an external security audit or
+production-readiness claim.
+
+The expiration-display finding is resolved: transfer configuration derives the
+displayed expiration from the Soroban authorization entry's
+`signatureExpirationLedger`, checks the matching intent, and rejects conflicting
+optional top-level expiration metadata. Regression tests cover matching, missing
+and contradictory metadata and preserve probe expiration behavior. The proposal
+and challenge remain immutable; expiry changes require a new proposal and both
+new approvals.
+
+Shared WebAuthn validation enforces registered credential/key, challenge, exact
+origin, RP-ID hash, UP/UV, canonical encodings, size limits and P-256 verification
+using the existing offline DER/low-S normalizer. Transfer review enforces the exact
+native SAC operation, CEO+CFO rule 0, 120-ledger window and unused nonce. HTTPS
+capture retains Host/origin/JSON/CSRF/proposal gates and explicit officer clicks;
+transfer mode has no browser simulation, finalization or submission endpoint.
+Separate finalization builds a fresh unsigned fee-payer transaction and requires
+successful `enforce` simulation within the unchanged maximum 1 XLM fee policy.
+
+## Confirmed inbound funding — TASK 4.30B
+
+| Field | Confirmed value |
+| --- | --- |
+| Network | Stellar Testnet — `Test SDF Network ; September 2015` |
+| Source / fee payer | `GDBSP3BBHMZQ6LVNQTFNK6THMXFJDBTIHCY7FVRMJ26AP4VSJAZ6XXX2` |
+| Vault destination | `CB2ZCJX4PB45LRQJ3CRCJ5JZ7O4DHONXMQV6U6RSIMXQ6KHYVNFZYYFH` |
+| Native XLM SAC | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` |
+| Amount | **10000000 stroops = 1.0000000 Testnet XLM** |
+| Transaction hash | `38ad66c749cde2aa735981fe04faae481515aaad232cd35aac3cae354b7eec4d` |
+| Ledger / result | **5228445 / SUCCESS** |
+| Actual fee charged | **698244 stroops = 0.0698244 Testnet XLM** |
+| Final vault balance | **1.0000000 XLM** |
+| Final fee-payer balance | **9976.4501656 XLM** |
+
+Balances were verified after funding on 2026-10-16 at ledger 5228454. RPC and Horizon
+agreed, with the exact native transfer event and source/vault balance changes
+reconciled to the amount plus actual fee. One submission, no automatic retry.
+Receiving this deposit required the existing fee payer's authorization, not the
+vault's CEO+CFO approvals. No additional funding or transaction is part of this
+publication. These recorded balances are a checkpoint snapshot; query fresh state
+before any later operation.
+
+The funded 1 XLM covers the planned first outgoing amount; that outgoing transfer
+still needs its own proposal, independent CEO+CFO approvals, enforce simulation,
+operational authorization, external fee-payer signing and confirmed submission.
+**Additional Testnet vault funding is needed for demo recording and repeated
+transfers. Every future funding operation requires separate explicit authorization**
+with a reviewed amount, fee cap, fresh balances/sequence and duplicate-funding guard.
+No future funding is authorized by this checkpoint.
+
+Only reviewed project sources, synthetic regression tests and this summarized
+public evidence are published. `tmp/`, private keys, credentials, real WebAuthn
+assertions, signed envelopes, TLS private material, raw operational reports and
+sensitive environment files are excluded. Synthetic fixture keys stay in memory;
+tests initiate no real WebAuthn ceremonies or Testnet transactions. Existing
+Testnet-only, localhost binding, independent custody, TTL/recovery and spending
+policy limitations remain; Blend V2/USDC is pending. Full history is in
+[testnet-progress.md](testnet-progress.md).
+
+## Checkpoint 4.6 — historical authorization status
 
 Real CEO Touch ID and CFO YubiKey assertions from two distinct registered P-256
 signers validated against the same Soroban authorization challenge on Stellar
@@ -29,14 +100,14 @@ explicit authorization; publication does not execute them.
 
 # First institutional transaction: preparation and validation
 
-Current checkpoint: **4.6 — Real WebAuthn Multisig Authorization Verified**. See
-[checkpoint status](testnet-progress.md) for completed integration, verified local
-HTTPS, real CEO+CFO assertion validation, both successful enforce simulations and
-the pending first 1 XLM Testnet transfer. Earlier milestone sections below are
-historical. Any future capture requires trusted HTTPS and an explicitly prepared
-and reviewed valid proposal; never reuse
-assertions across challenges. Local certificates, credentials and proposals are
-not distributed with this repository.
+Current checkpoint: **4.7 — Transfer Authorization Ready**. See
+[checkpoint status](testnet-progress.md) for the reviewed transfer capture and
+expiration correction, verified local HTTPS, earlier real CEO+CFO probe validation,
+confirmed inbound 1 XLM funding and pending first outgoing transfer. Earlier
+milestone sections below are historical. Any future capture requires trusted HTTPS
+and an explicitly prepared and reviewed valid proposal; never reuse assertions
+across challenges. Local certificates, credentials and proposals are not
+distributed with this repository.
 
 Historical preparation status: **offline Wasm validated; deployment awaited user configuration and explicit approval**.
 No contract was deployed, no transaction was submitted, no Mainnet endpoint was accessed,
@@ -530,3 +601,66 @@ sessions, mandatory enforce mode, unsigned fee payer, fee/error reporting, HTTP
 review/CSRF/Host gating, and absence of automatic browser ceremonies. Real CEO+CFO
 capture and enforce acceptance by the deployed contracts are verified in Checkpoint
 4.6 above; automated tests remain synthetic and do not repeat real ceremonies.
+
+## First 1 XLM transfer — protected authorization capture
+
+The local integration adds `AUTHORIZATION_PURPOSE=transfer` to the existing
+`WEBAUTHN_MODE=authorization` HTTPS server. The default purpose remains `probe`.
+Transfer capture is restricted to the reviewed Testnet account/verifier, native SAC
+`CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`, destination/fee payer
+`GDBSP3BBHMZQ6LVNQTFNK6THMXFJDBTIHCY7FVRMJ26AP4VSJAZ6XXX2`, amount `10000000`,
+CEO+CFO rule 0, and a configured duration of 120 ledgers. The general transfer
+configuration policy remains 10–120 ledgers; probes retain 10–360. No contract,
+signer registration or dependency changes are required.
+
+For a later separately authorized preparation, first create a private directory
+(mode 0700) under `tmp/` and review a dedicated configuration with those parameters,
+`localhost` / `https://localhost:8443`, the existing public signer registrations and
+a fee cap no greater than 10000000 stroops. Checkpoint 4.7 records confirmed inbound
+funding of exactly 1 XLM; query fresh balances before preparing the outbound operation.
+This runbook does not authorize another deposit or create a real request. Any later
+funding requires separate explicit authorization. Do not reuse the old
+configuration's asset/recipient placeholders or the 360-ledger probe configuration.
+
+The existing `prepare CONFIG PRIVATE_DIR/request.json` command creates a private
+proposal. `review CONFIG PRIVATE_DIR/request.json` now checks the deployed hashes,
+RP/origin, signers, rule, exact invocation/challenge, expiration and unused nonce.
+Both officers must independently review the same immutable proposal. At capture,
+use the existing TLS environment and set:
+
+```sh
+source .tools/env.sh
+export WEBAUTHN_MODE=authorization
+export AUTHORIZATION_PURPOSE=transfer
+export AUTHORIZATION_CONFIG=tmp/REVIEWED-TRANSFER-CONFIG.json
+export AUTHORIZATION_REQUEST=tmp/PRIVATE-DIRECTORY/request.json
+# Start npm run enroll only during a separately authorized real capture step.
+```
+
+Loading or reviewing the page starts no WebAuthn ceremony. Each officer explicitly
+clicks their own button after review. The server verifies the exact credential
+ID/public key, canonical encodings and limits, origin/RP/challenge, UP/UV and P-256
+signature with the existing offline DER/low-S normalizer. It repeats live review
+before and after signature validation. Validated assertions and the proposal are
+saved only in a new private `tmp/authorization-.../` directory, with files 0600.
+A consumed nonce, expired proposal, duplicate signer or changed operation fails
+closed. A session cannot replace its proposal or import assertions on restart.
+
+Completion means **CEO and CFO approvals validated.** Transfer mode has no simulation,
+finalization or submission endpoint. Run the existing `finalize` command separately
+with the saved proposal and both assertion files, writing to a private directory
+under `tmp/`. Legacy console downloads lacking role/credential metadata are rejected.
+Finalization revalidates live configuration, nonce, expiration and both signatures,
+builds a fresh unsigned fee-payer transaction and requires Soroban `enforce`
+simulation within the unchanged fee cap. It rechecks validity before saving the
+unsigned envelope. Simulation failures omit raw assertion diagnostics.
+
+120 ledgers is approximately ten minutes at five seconds per ledger; ledger
+numbers determine validity. Both 120-second browser prompts, validation, external
+signing and inclusion must fit. More than five ledgers must remain at checks, but
+that minimum is not a sufficient human signing budget. If time is short, stop;
+prepare a new proposal and obtain both approvals again only with explicit approval.
+Never extend an active challenge. `submit` still requires its separate explicit
+approval gate and externally signed envelope; `result` plus event/balance checks
+must confirm execution. No real transfer or real transfer authorization has been
+performed by the synthetic integration tests. Keep all artifacts local.

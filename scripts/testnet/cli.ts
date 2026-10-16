@@ -1,15 +1,16 @@
-import { readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, writeFileSync, realpathSync, statSync } from 'node:fs';
+import { resolve, dirname, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { randomBytes, createPublicKey, verify as verifySignature } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import { Address, BASE_FEE, Contract, Networks, Operation, SorobanDataBuilder, Transaction, TransactionBuilder, rpc, nativeToScVal, scValToNative, xdr } from '@stellar/stellar-sdk';
-import { NETWORK, RPC, bytes, challenge, credentials, withCredentials, external, sha, signaturePayload, struct, u32 } from './auth.ts';
+import { randomBytes, createPublicKey } from 'node:crypto';
+import { Address, BASE_FEE, Contract, Networks, Operation, SorobanDataBuilder, Transaction, TransactionBuilder, rpc, scValToNative, xdr } from '@stellar/stellar-sdk';
+import { NETWORK, RPC, bytes, challenge, credentials, withCredentials, external, sha, struct, u32 } from './auth.ts';
 import { PROBE_MAX_EXPIRATION_LEDGERS, probeOperation, buildProbeRequest, probeReview } from './auth-probe.ts';
 import { authorizedProbeOperation, probeReport } from './probe-authorization.ts';
 import type { ProbeAssertion, ProbeReport } from './probe-authorization.ts';
 import type { ProbeRequest } from './auth-probe.ts';
-import type { Assertion } from './auth.ts';
+import {transfer,validateTransferRequest,transferPolicy,authorizedTransferOperation} from './transfer-authorization.ts';
+import type {TransferAssertion} from './transfer-authorization.ts';
+export {transfer,validateRequest} from './transfer-authorization.ts';
 
 const ROOT = '/workspaces/stellar-wallet';
 const ARTIFACTS = {
@@ -134,71 +135,91 @@ async function quorumRule(c: Config) {
   }
   throw Error('Selected pair has no on-chain rule');
 }
-export function transfer(c: Config, auth?: xdr.SorobanAuthorizationEntry[]) {
-  address(c.token); address(c.account); address(c.recipient);
-  if (!/^[1-9][0-9]*$/.test(c.amount) || BigInt(c.amount) >= 2n ** 127n) throw Error('Positive i128 base-unit amount required');
-  const args = [address(c.account), address(c.recipient),
-    nativeToScVal(BigInt(c.amount), {type:'i128'})];
-  return Operation.invokeContractFunction({contract: c.token, function: 'transfer', args, auth});
-}
 async function prepare(c: Config, output: string) {
+  protectedTransferPath(output);
+  transferPolicy(c,0);
   const rule = await quorumRule(c);
   const tx = await transaction(c, transfer(c));
   const sim = await simulate(tx, 'record');
   const auth = sim.result?.auth;
   if (!auth || auth.length !== 1 || Address.fromScAddress(credentials(auth[0]).address).toString() !== c.account) throw Error('Unexpected authorization tree');
   const entry = withCredentials(auth[0], {signatureExpirationLedger:sim.latestLedger + c.expirationLedgers});
-  save(output, {network: NETWORK, entryXdr: entry.toXDR('base64'), ruleIds: [rule],
+  const req:Request = {network: NETWORK, entryXdr: entry.toXDR('base64'), ruleIds: [rule],
     challenge: challenge(entry, [rule]).toString('base64url'), origin: c.origin, rpId: c.rpId,
     signers: c.signers, pair: c.pair,
     intent: {account: c.account, token: c.token, recipient: c.recipient, amount: c.amount,
-      expirationLedger: credentials(entry).signatureExpirationLedger}} satisfies Request);
+      expirationLedger: credentials(entry).signatureExpirationLedger}};
+  await reviewTransfer(c,req);
+  saveTransferArtifact(output,req);
 }
-export function validateRequest(c: Config, req: Request, rule: number) {
-  if ('kind' in req || 'unsignedEnvelopeXdr' in req) throw Error('Probe requests cannot use transfer review/finalization');
-  const entry = xdr.SorobanAuthorizationEntry.fromXDR(req.entryXdr, 'base64');
-  const body = transfer(c).body;
-  if (body.type !== 'invokeHostFunction' || body.invokeHostFunctionOp.hostFunction.type !== 'hostFunctionTypeInvokeContract') throw Error('Expected contract invocation');
-  const expected = body.invokeHostFunctionOp.hostFunction.invokeContract;
-  if (req.network !== NETWORK || req.origin !== c.origin || req.rpId !== c.rpId ||
-      JSON.stringify(req.signers) !== JSON.stringify(c.signers) || JSON.stringify(req.pair) !== JSON.stringify(c.pair) ||
-      JSON.stringify(req.ruleIds) !== JSON.stringify([rule]) ||
-      Address.fromScAddress(credentials(entry).address).toString() !== c.account ||
-      entry.rootInvocation.function.type !== 'sorobanAuthorizedFunctionTypeContractFn' ||
-      !Buffer.from(entry.rootInvocation.function.contractFn.toXDR()).equals(expected.toXDR()) || entry.rootInvocation.subInvocations.length !== 0 ||
-      req.challenge !== challenge(entry, [rule]).toString('base64url')) throw Error('Proposal differs from reviewed configuration');
-  if (JSON.stringify(req.intent) !== JSON.stringify({account:c.account,token:c.token,recipient:c.recipient,amount:c.amount,
-      expirationLedger:credentials(entry).signatureExpirationLedger})) throw Error('Misleading intent summary');
-  return entry;
+export function protectedTransferPath(file:string) {
+  const path=workspaceFile(file),parent=realpathSync(dirname(path));
+  if(!parent.startsWith(ROOT+'/tmp/') || (statSync(parent).mode & 0o077)!==0)
+    throw Error('Transfer artifacts require an existing private directory (0700) under tmp/');
+  return resolve(parent,basename(path));
 }
-function assertion(c: Config, req: Request, file: string): Assertion {
-  const a = load(file);
-  if (!c.pair.some(r => c.signers[r].publicKey.toLowerCase() === a.publicKey.toLowerCase())) throw Error('Unapproved signer');
-  const rawClient = Buffer.from(a.clientDataJSON, 'base64');
-  const client = JSON.parse(rawClient.toString());
-  const ad = Buffer.from(a.authenticatorData, 'base64');
-  if (client.type !== 'webauthn.get' || client.challenge !== req.challenge || client.origin !== c.origin ||
-      client.crossOrigin === true || client.topOrigin !== undefined || ad.length < 37 ||
-      !ad.subarray(0,32).equals(sha(Buffer.from(c.rpId))) || (ad[32] & 5) !== 5) throw Error('Invalid WebAuthn binding/UV');
-  const compact = execFileSync(resolve(ROOT, '.tools/cargo/bin/cargo'),
-    ['run', '--quiet', '--locked', '-p', 'institutional-account', '--example', 'normalize_assertion', '--', a.signatureDER],
-    {cwd: ROOT, encoding: 'utf8'}).trim();
-  const pk = Buffer.from(a.publicKey, 'hex');
-  const key = createPublicKey({format:'jwk', key:{kty:'EC', crv:'P-256', x:pk.subarray(1,33).toString('base64url'), y:pk.subarray(33).toString('base64url')}});
-  if (!verifySignature('sha256', Buffer.concat([ad, sha(rawClient)]), {key,dsaEncoding:'ieee-p1363'}, Buffer.from(compact,'hex'))) throw Error('Invalid passkey signature');
-  return {...a, signature:compact};
+export function saveTransferArtifact(file:string,data:unknown) {
+  writeFileSync(protectedTransferPath(file),JSON.stringify(data,null,2)+'\n',{flag:'wx',mode:0o600});
 }
-async function finalize(c: Config, requestFile: string, files: string[], output: string) {
-  const rule = await quorumRule(c);
-  const req: Request = load(requestFile);
-  const entry = validateRequest(c, req, rule);
-  const ledger = (await server.getLatestLedger()).sequence;
-  const expiry = credentials(entry).signatureExpirationLedger;
-  if (expiry <= ledger + 5 || expiry > ledger + 120) throw Error('Authorization expired or outside policy');
-  const assertions = files.map(f => assertion(c, req, f));
-  const signedEntry = withCredentials(entry, {signature:signaturePayload(c.verifier,[rule],assertions)});
-  // Mandatory second simulation executes __check_auth with actual assertions.
-  await unsigned(c, transfer(c,[signedEntry]), output);
+export function loadTransferArtifact(file:string) {
+  const path=protectedTransferPath(realpathSync(workspaceFile(file)));
+  if((statSync(path).mode & 0o077)!==0)throw Error('Transfer artifacts require private files (0600)');
+  return JSON.parse(readFileSync(path,'utf8'));
+}
+export interface TransferReviewServices {
+  network:()=>Promise<unknown>;
+  quorumRule:(c:Config)=>Promise<number>;
+  latestLedger:()=>Promise<{sequence:number}>;
+  nonceEntries:(key:xdr.LedgerKey)=>Promise<{entries:unknown[]}>;
+}
+export async function reviewTransfer(c:Config,req:Request,services:TransferReviewServices={
+  network,quorumRule,latestLedger:()=>server.getLatestLedger(),nonceEntries:key=>server.getLedgerEntries(key),
+}) {
+  transferPolicy(c,0);
+  await services.network();
+  const rule=await services.quorumRule(c);
+  const ledger=(await services.latestLedger()).sequence;
+  const entry=validateTransferRequest(c,req,rule,ledger),cred=credentials(entry);
+  const key=xdr.LedgerKey.contractData(new xdr.LedgerKeyContractData({contract:cred.address,
+    key:xdr.ScVal.scvLedgerKeyNonce(new xdr.ScNonceKey({nonce:cred.nonce})),durability:xdr.ContractDataDurability.temporary}));
+  if((await services.nonceEntries(key)).entries.length!==0)throw Error('Transfer nonce already consumed');
+  return {ledger,summary:{network:NETWORK,intent:req.intent,requiredSigners:['ceo','cfo'],ruleIds:[rule],
+    origin:c.origin,rpId:c.rpId,nonce:cred.nonce.toString(),expirationLedger:cred.signatureExpirationLedger,
+    remainingLedgers:cred.signatureExpirationLedger-ledger,challenge:req.challenge}};
+}
+export interface TransferFinalizationServices {
+  review:typeof reviewTransfer;
+  transaction:(c:Config,op:xdr.Operation)=>Promise<Transaction>;
+  simulate:rpc.Server['simulateTransaction'];
+}
+export async function finalizeTransfer(config:Config,request:Request,input:TransferAssertion[],services:TransferFinalizationServices={
+  review:reviewTransfer,transaction,simulate:server.simulateTransaction.bind(server),
+}) {
+  const c=structuredClone(config),req=structuredClone(request),assertions=structuredClone(input);
+  const {ledger}=await services.review(c,req);
+  const op=authorizedTransferOperation(c,req,assertions,ledger);
+  await services.review(c,req);
+  const tx=await services.transaction(c,op);
+  let sim:rpc.Api.SimulateTransactionResponse;
+  try {sim=await services.simulate(tx,undefined,'enforce',false);}
+  catch {throw Error('Testnet transfer enforce RPC unavailable');}
+  if(!rpc.Api.isSimulationSuccess(sim))throw Error('Transfer enforce simulation failed');
+  if('restorePreamble' in sim && sim.restorePreamble)throw Error('Separate restoration required');
+  if(!sim.result || sim.result.retval.type!=='scvVoid')throw Error('Unexpected transfer simulation return value');
+  const built=rpc.assembleTransaction(tx,sim).build();
+  enforceFeeCap(built.fee,c.maxFeeStroops,sim.minResourceFee,sim.transactionData.build().resourceFee);
+  await services.review(c,req); // Never save a now-expired or consumed proposal.
+  return {network:NETWORK,envelopeXdr:built.toXDR(),feeStroops:built.fee,minResourceFee:sim.minResourceFee,
+    footprintKeys:[...sim.transactionData.build().resources.footprint.readOnly,...sim.transactionData.build().resources.footprint.readWrite].map(k=>k.toXDR('base64')),
+    transactionDataXdr:sim.transactionData.build().toXDR('base64')};
+}
+async function finalize(c:Config,requestFile:string,files:string[],output:string) {
+  protectedTransferPath(output);
+  // Invalid assertion files and RPC diagnostics are never echoed to the terminal.
+  let artifact:Awaited<ReturnType<typeof finalizeTransfer>>;
+  try {artifact=await finalizeTransfer(c,loadTransferArtifact(requestFile),files.map(f=>loadTransferArtifact(f)));}
+  catch {throw Error('Transfer finalization failed; check proposal, registered approvals, nonce, expiration and fee cap');}
+  saveTransferArtifact(output,artifact);
 }
 async function unusedProbeNonce(req: ProbeRequest) {
   const entry = xdr.SorobanAuthorizationEntry.fromXDR(req.entryXdr,'base64');
@@ -317,8 +338,7 @@ async function main() {
     if (report.simulation !== 'PASS') process.exitCode = 1;
   } else if (cmd === 'review') {
     const req: Request = load(args[0]);
-    const entry = validateRequest(c,req,await quorumRule(c));
-    console.log(JSON.stringify({intent:req.intent,challenge:challenge(entry,req.ruleIds).toString('base64url')},null,2));
+    console.log(JSON.stringify((await reviewTransfer(c,req)).summary,null,2));
   } else if (cmd === 'prepare') await prepare(c,args[0]);
   else if (cmd === 'finalize') await finalize(c,args[0],[args[1],args[2]],args[3]);
   else if (cmd === 'submit') {

@@ -9,7 +9,8 @@ function controls() {
   document.querySelectorAll('[data-role]').forEach(b=>{
     b.disabled=busy||!reviewSucceeded||!$('confirm').checked||state.completed||state.captured.includes(b.dataset.role);
   });
-  $('simulate').disabled=busy||!reviewSucceeded||!state||state.completed||state.captured.length!==2;
+  $('simulate').hidden=config?.purpose==='transfer';
+  $('simulate').disabled=config?.purpose==='transfer'||busy||!reviewSucceeded||!state||state.completed||state.captured.length!==2;
 }
 async function post(path,data={}) {
   const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},
@@ -26,12 +27,12 @@ $('review').addEventListener('click',async()=>{
   finally {busy=false;controls();}
 });
 document.querySelectorAll('[data-role]').forEach(button=>button.addEventListener('click',async()=>{
-  if(busy||!reviewSucceeded||!$('confirm').checked)return;
+  if(busy||!reviewSucceeded||!$('confirm').checked||state.completed||state.captured.includes(button.dataset.role))return;
   busy=true;controls();const role=button.dataset.role;
   try {
     const options=await post('/authorization/options',{role});
     if(options.proposalId!==config.proposalId||options.challenge!==config.challenge||options.rpId!==config.rpId)throw Error('Proposal changed; stop this session');
-    $('status').textContent=`${role}: approve the reviewed Testnet probe using this officer's registered authenticator.`;
+    $('status').textContent=`${role}: approve the reviewed Testnet ${config.purpose==='transfer'?'1 XLM transfer':'probe'} using this officer's registered authenticator.`;
     // This explicit button click is the only place that initiates a WebAuthn ceremony.
     const credential=await navigator.credentials.get({publicKey:{challenge:fromUrl(options.challenge),rpId:options.rpId,
       allowCredentials:[{type:'public-key',id:fromUrl(options.credentialId)}],userVerification:'required',timeout:120000}});
@@ -39,13 +40,14 @@ document.querySelectorAll('[data-role]').forEach(button=>button.addEventListener
     state=await post('/authorization/assertion',{assertion:{role,credentialId:url64(credential.rawId),publicKey:options.publicKey,
       clientDataJSON:b64(credential.response.clientDataJSON),authenticatorData:b64(credential.response.authenticatorData),
       signatureDER:Array.from(new Uint8Array(credential.response.signature),x=>x.toString(16).padStart(2,'0')).join('')}});
-    $('status').textContent=`${role}: assertion verified and saved for this proposal.`;
+    $('status').textContent=config.purpose==='transfer'&&state.completed?'CEO and CFO approvals validated.':`${role}: assertion verified and saved for this proposal.`;
   } catch(error) {
     $('status').textContent=error.message;
     try {await post('/authorization/cancel',{role});} catch { /* Keep the displayed failure; never replace a challenge. */ }
   } finally {busy=false;$('confirm').checked=false;controls();}
 }));
 $('simulate').addEventListener('click',async()=>{
+  if(config?.purpose==='transfer')return;
   busy=true;controls();
   try {
     const result=await post('/authorization/simulate');state=result;
@@ -57,6 +59,7 @@ $('simulate').addEventListener('click',async()=>{
 (async()=>{
   config=await(await fetch('/config')).json();state=config;
   if(config.mode!=='authorization'||location.origin!==config.origin||config.origin!=='https://localhost:8443'||!window.isSecureContext)throw Error('Wrong authorization origin or insecure context');
+  if(config.purpose!==undefined&&!['probe','transfer'].includes(config.purpose))throw Error('Unknown authorization purpose');
   $('proposal').textContent=JSON.stringify({operation:config.intent,network:config.network,requiredSigners:['ceo','cfo'],ruleIds:config.ruleIds,
     origin:config.origin,rpId:config.rpId,challenge:config.challenge,expirationLedger:config.expirationLedger,proposalId:config.proposalId},null,2);
   controls();

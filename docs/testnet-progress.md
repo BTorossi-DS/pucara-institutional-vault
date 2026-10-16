@@ -1,4 +1,86 @@
-# Checkpoint 4.6 — Real WebAuthn Multisig Authorization Verified
+# Checkpoint 4.7 — Transfer Authorization Ready
+
+Fecha: 2026-10-16. Rama: `feat/smart-account-setup`.
+Base publicada: Checkpoint 4.6 (`b7caecf`). Este registro sustituye el estado actual
+de los checkpoints históricos conservados debajo. No modifica contratos Rust,
+Wasm, dependencias ni despliegues.
+
+## Integración y revisión de seguridad
+
+- Validación WebAuthn compartida entre probe y transferencia: credencial y clave
+  registrada por rol, challenge/origin/RP-ID, UP/UV, codificaciones canónicas,
+  límites de tamaño y firma P-256 con el normalizador DER/low-S existente.
+- Autorización de transferencia restringida a las instancias Testnet revisadas,
+  SAC nativo, importe `10000000`, CEO+CFO, regla 0 y ventana de 120 ledgers. Se
+  revisan intención, árbol exacto, nonce no consumido y expiración; la sesión fija
+  una propuesta inmutable y vuelve a comprobarla antes y después de cada captura.
+- Captura HTTPS explícita: Host/origin/JSON/CSRF y propuesta verificados. Cargar o
+  revisar la página no inicia WebAuthn. El modo transferencia termina al validar
+  ambas aprobaciones; no ofrece simulación, finalización ni envío desde el browser.
+- **Hallazgo de visualización de expiración resuelto:** el valor mostrado procede
+  de `signatureExpirationLedger` en la entrada Soroban. Debe coincidir con la
+  intención; metadata opcional de nivel superior contradictoria se rechaza. Tests
+  sintéticos cubren metadata coincidente, ausente y contradictoria, preservando
+  también el comportamiento del probe.
+- La finalización separada revalida ambas assertions, red/configuración, nonce y
+  expiración, construye transporte nuevo sin firma del fee payer y exige simulación
+  `enforce` dentro del límite de fees. Artefactos privados: directorio 0700 y archivos
+  0600 bajo `tmp/`, sin sobrescritura ni escape por symlinks en las rutas revisadas.
+- Revisión de seguridad de todos los archivos seleccionados completada, sin
+  hallazgos bloqueantes abiertos en este alcance. No equivale a auditoría externa
+  ni acredita preparación para producción.
+
+Checks de publicación: **TypeScript strict PASS**, **41/41 tests Node PASS** y
+**`git diff --check` PASS**. Los tests usan claves sintéticas en memoria, browser/RPC
+simulados y ningún registro o assertion WebAuthn real.
+
+## Financiación real de Testnet confirmada — TASK 4.30B
+
+| Dato | Valor confirmado |
+| --- | --- |
+| Red | Stellar Testnet — `Test SDF Network ; September 2015` |
+| Fuente / fee payer | `GDBSP3BBHMZQ6LVNQTFNK6THMXFJDBTIHCY7FVRMJ26AP4VSJAZ6XXX2` |
+| Vault receptora | `CB2ZCJX4PB45LRQJ3CRCJ5JZ7O4DHONXMQV6U6RSIMXQ6KHYVNFZYYFH` |
+| SAC XLM nativo | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` |
+| Importe recibido | **10000000 stroops = 1.0000000 XLM Testnet** |
+| Transaction hash | `38ad66c749cde2aa735981fe04faae481515aaad232cd35aac3cae354b7eec4d` |
+| Ledger / resultado | **5228445 / SUCCESS** |
+| Fee efectivamente cobrado | **698244 stroops = 0.0698244 XLM Testnet** |
+| Balance final de la vault | **1.0000000 XLM** |
+| Balance final del fee payer | **9976.4501656 XLM** |
+
+Estos balances son la verificación posterior a la financiación del 2026-10-16,
+ledger 5228454. RPC y Horizon coincidieron; evento, importe y variaciones de saldo
+reconciliaron exactamente 1 XLM más el fee real. Hubo un solo envío, sin reintentos.
+Fue una entrada desde el fee payer hacia la vault, autorizada por separado; no fue
+la primera salida institucional ni necesitó CEO+CFO como receptora. Esta publicación
+no ejecuta financiación, firma, envío ni ceremonia adicional.
+
+## Pendiente: primera salida y grabación de demo
+
+La primera transferencia saliente de **1 XLM autorizada por CEO+CFO sigue pendiente**.
+El probe real del Checkpoint 4.6 y esta financiación no demuestran su ejecución.
+El siguiente paso requiere preparar/revisar una propuesta nueva con HTTPS confiable,
+capturar ambas aprobaciones independientes, finalizar y simular en `enforce`, y
+obtener la autorización operativa correspondiente antes de firmar/enviar. Después
+deberán confirmarse `SUCCESS`, evento y balances. No reutilizar propuestas vencidas
+ni assertions de otro challenge.
+
+Se necesita **financiación Testnet adicional para la grabación de demo** y las
+repeticiones: el saldo de 1 XLM solo cubre la primera salida prevista. Cualquier
+financiación futura requiere **autorización separada y explícita**, importe y fee
+revisados, estado fresco y protección contra duplicados; no se autoriza aquí.
+
+Solo se publican fuentes, tests sintéticos y documentación resumida. Quedan fuera
+`tmp/`, claves/credenciales, assertions reales, envelopes firmados, material TLS
+privado, reportes operativos crudos y archivos de entorno sensibles. Persisten las
+limitaciones de custodia no atestada, binding local, TTL/archivo, recuperación,
+ausencia de límites de gasto y Blend V2/USDC pendiente. Prototipo sin auditoría,
+solo Testnet, sin fondos reales ni garantía de producción.
+
+---
+
+# Checkpoint 4.6 — Real WebAuthn Multisig Authorization Verified (histórico)
 
 Fecha: 2026-10-16. Rama: `feat/smart-account-setup`.
 Base publicada: `62a207009fa0161e2247194ca5972fed26035fbd`.
