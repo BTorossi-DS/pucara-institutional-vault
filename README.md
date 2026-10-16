@@ -1,18 +1,26 @@
-# Stellar Institutional Vault
+# Pucará — Stellar Institutional Vault
 
 Institutional Soroban Smart Account prototype using
 OpenZeppelin Stellar Accounts **0.7.2** and Soroban SDK **26.1.0**.
 
-**Checkpoint 4.6 — Real WebAuthn Multisig Authorization Verified:** CEO Touch ID
-and CFO YubiKey assertions from two distinct registered P-256 signers validated
-against the same Soroban challenge on **Stellar Testnet**, using rule 0 for exactly
-`SmartAccount.execute(Verifier, "origin", [])`. Soroban `enforce` simulation and an
-independent enforce simulation both passed, with contract error `null` and estimated
-fees of **2,409,780** and **2,412,774 stroops** (0.2409780 and 0.2412774 Testnet XLM).
-No probe transaction was submitted, no fees were charged, and the nonce remained
-unconsumed. TypeScript strict and 25/25 Node tests pass. Probes support a 360-ledger
-expiration window (10–360 ledgers); transfers retain their 10–120-ledger policy. The first **1 XLM
-Testnet transfer remains pending**.
+## VERIFIED ON-CHAIN TRANSACTION
+
+Pucará completed its first institutional **1 XLM Stellar Testnet transfer** with
+independent **CEO + CFO WebAuthn/passkey approvals**, satisfying the smart account's
+**2-of-3** institutional policy. Result: **SUCCESS**, ledger **5230325**;
+actual fee: **0.2122091 Testnet XLM**. The native transfer event and resulting
+balances were verified; RPC and Horizon agree.
+
+Transaction hash:
+`55f316eaf9d1290aa08746401fe7a7ec44fe820d54245047389483f292cfddd2`
+
+[View transaction on Stellar Expert (Testnet)](https://stellar.expert/explorer/testnet/tx/55f316eaf9d1290aa08746401fe7a7ec44fe820d54245047389483f292cfddd2)
+— [Public multisig transfer evidence](docs/testnet-multisig-proof.md).
+
+This confirms a submitted token transfer, following the earlier authorization-only
+probe. Testnet assets only; no production-readiness or hardware-attestation claim.
+
+## Development
 
 See the [checkpoint status and verified deployments](docs/testnet-progress.md) and
 [authorization runbook](docs/testnet-readiness.md). Expired proposals must be
@@ -49,8 +57,8 @@ No backend custody, public account factory, recovery bypass, production
 credentials or production deployment is included. The browser enrollment utility is for local development. The verifier address supplied at account
 construction is a trusted bootstrap parameter: verify the reviewed executable hash
 and immutable origin/RP configuration before any future account deployment.
-The contracts and integration code are unaudited; real-browser multisig authorization is verified only for the
-Testnet probe simulation, not a submitted token transfer.
+The contracts and integration code are unaudited. Real-browser CEO+CFO authorization
+and the submitted Testnet token transfer are documented in the public evidence above.
 All network integration must explicitly select **Stellar Testnet**.
 
 The repository includes [compiled-Wasm validation and the Testnet runbook](docs/testnet-readiness.md),
@@ -58,6 +66,5 @@ a localhost browser enrollment tool (`npm run enroll`), and Testnet-only transac
 preparation scripts. Earlier milestone documents describe their state at the time;
 the [Testnet checkpoint](docs/testnet-progress.md) records current deployment status.
 Run `bash scripts/validate.sh` for the full native/Wasm/TypeScript build and checks.
-The next milestone is the separately authorized first 1 XLM Testnet transfer,
-including submission and on-chain result/balance verification. Blend V2 / USDC
-lending remains pending. Every additional transaction requires explicit approval.
+The first institutional Testnet transfer is confirmed. Blend V2 / USDC lending
+remains pending. Every additional transaction requires explicit approval.
