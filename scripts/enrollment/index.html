@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Institutional Vault — Development Enrollment</title>
+<body><main><h1>Institutional passkey enrollment</h1>
+<p>Development only. Each officer must use their own authenticator. Register and confirm possession of one passkey per role. Private keys stay with the authenticator.</p>
+<p id="binding"></p>
+<button data-role="ceo">Enroll CEO</button>
+<button data-role="cfo">Enroll CFO</button>
+<button data-role="treasury_manager">Enroll Treasury Manager</button>
+<p id="status" role="status"></p><pre id="registrations"></pre>
+<button id="download" disabled>Download three public registrations</button>
+<p>Localhost registrations cannot be reused for a different RP-ID. Enrollment does not prove that three different people or devices control the keys. Coordinate independent custody.</p>
+</main><script src="/client.js"></script></body></html>

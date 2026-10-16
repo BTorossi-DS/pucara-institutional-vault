@@ -2,6 +2,9 @@
   "name": "Stellar Wallet Development",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:22-bookworm",
   "workspaceFolder": "/workspaces/stellar-wallet",
+  "mounts": [
+    "source=stellar-testnet-keys,target=/var/lib/stellar-testnet,type=volume"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [

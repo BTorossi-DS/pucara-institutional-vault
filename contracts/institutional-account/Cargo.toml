@@ -1,0 +1,21 @@
+[package]
+name = "institutional-account"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[features]
+wasm-tests = []
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk.workspace = true
+stellar-accounts.workspace = true
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+institutional-webauthn-verifier = { path = "../webauthn-verifier" }
+p256 = { version = "=0.13.2", features = ["ecdsa"] }
+rand_core = { version = "=0.6.4", features = ["getrandom"] }
