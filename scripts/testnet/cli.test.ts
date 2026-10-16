@@ -3,13 +3,24 @@ import assert from 'node:assert/strict';
 import { readFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { xdr } from '@stellar/stellar-sdk';
-import { configuration, transfer, validateRequest } from './cli.ts';
+import { configuration, enforceFeeCap, transfer, validateRequest } from './cli.ts';
 import type { Config, Request } from './cli.ts';
 import { NETWORK, challenge, credentials } from './auth.ts';
 const vector=readFileSync('scripts/testnet/sdk-auth-vector.txt','utf8').trim().split('\n');
 const base: Config={feePayer:'',origin:'https://vault.example',rpId:'vault.example',
   signers:{ceo:{publicKey:vector[3],credentialId:'Y2Vv'},cfo:{publicKey:vector[4],credentialId:'Y2Zv'},treasury_manager:{publicKey:vector[5],credentialId:'dHJlYXN1cnk'}},
   account:vector[0],verifier:vector[1],token:vector[2],recipient:vector[1],amount:'7',pair:['ceo','cfo'],expirationLedgers:60,maxFeeStroops:'10000000'};
+test('fee cap rejects excess with exact costs and accepts the boundary',()=>{
+  assert.throws(()=>enforceFeeCap('12345678', base.maxFeeStroops, '12345578', 12345578n), {
+    message: 'Fee cap exceeded: estimated total 12345678 stroops (1.2345678 XLM); ' +
+      'configured limit 10000000 stroops (1.0000000 XLM); ' +
+      'simulation minResourceFee 12345578 stroops; assembled resourceFee 12345578 stroops; ' +
+      'inclusion fee (total - resourceFee) 100 stroops'
+  });
+  assert.throws(()=>enforceFeeCap('10000001', base.maxFeeStroops, '9999901', 9999901n), /1\.0000001 XLM/);
+  assert.doesNotThrow(()=>enforceFeeCap('10000000', base.maxFeeStroops, '9999900', 9999900n));
+  assert.doesNotThrow(()=>enforceFeeCap('9999999', base.maxFeeStroops, '9999899', 9999899n));
+});
 test('transfer proposal rejects changed intent, signer configuration, challenge and nested calls',()=>{
   const original=xdr.SorobanAuthorizationEntry.fromXDR(vector[6],'hex');
   const operation=transfer(base);

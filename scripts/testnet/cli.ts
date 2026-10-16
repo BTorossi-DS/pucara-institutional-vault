@@ -73,11 +73,23 @@ async function simulate(tx: Transaction, mode: rpc.Api.SimulationAuthMode = 'enf
   if ('restorePreamble' in result && result.restorePreamble) throw Error('Separate restoration required; review restorePreamble and rebuild after restoration');
   return result;
 }
+export function enforceFeeCap(fee: string, cap: string, minResourceFee: string, resourceFee: bigint) {
+  const total = BigInt(fee);
+  const limit = BigInt(cap);
+  const xlm = (stroops: bigint) => `${stroops / 10000000n}.${(stroops % 10000000n).toString().padStart(7, '0')}`;
+  if (total > limit) throw Error(
+    `Fee cap exceeded: estimated total ${total} stroops (${xlm(total)} XLM); ` +
+    `configured limit ${limit} stroops (${xlm(limit)} XLM); ` +
+    `simulation minResourceFee ${minResourceFee} stroops; ` +
+    `assembled resourceFee ${resourceFee} stroops; ` +
+    `inclusion fee (total - resourceFee) ${total - resourceFee} stroops`
+  );
+}
 async function unsigned(c: Config, op: xdr.Operation, output: string, data?: xdr.SorobanTransactionData) {
   const tx = await transaction(c, op, data);
   const sim = await simulate(tx);
   const built = rpc.assembleTransaction(tx, sim).build();
-  if (BigInt(built.fee) > BigInt(c.maxFeeStroops)) throw Error('Fee cap exceeded');
+  enforceFeeCap(built.fee, c.maxFeeStroops, sim.minResourceFee, sim.transactionData.build().resourceFee);
   save(output, {network: NETWORK, envelopeXdr: built.toXDR(), feeStroops: built.fee,
     minResourceFee: sim.minResourceFee,
     footprintKeys: [...sim.transactionData.build().resources.footprint.readOnly,...sim.transactionData.build().resources.footprint.readWrite].map(k=>k.toXDR('base64')),
