@@ -85,9 +85,9 @@ export function enforceFeeCap(fee: string, cap: string, minResourceFee: string, 
     `inclusion fee (total - resourceFee) ${total - resourceFee} stroops`
   );
 }
-async function unsigned(c: Config, op: xdr.Operation, output: string, data?: xdr.SorobanTransactionData) {
+async function unsigned(c: Config, op: xdr.Operation, output: string, data?: xdr.SorobanTransactionData, authMode: rpc.Api.SimulationAuthMode = 'enforce') {
   const tx = await transaction(c, op, data);
-  const sim = await simulate(tx);
+  const sim = await simulate(tx, authMode);
   const built = rpc.assembleTransaction(tx, sim).build();
   enforceFeeCap(built.fee, c.maxFeeStroops, sim.minResourceFee, sim.transactionData.build().resourceFee);
   save(output, {network: NETWORK, envelopeXdr: built.toXDR(), feeStroops: built.fee,
@@ -214,7 +214,8 @@ async function main() {
     const constructorArgs = type === 'verifier' ? [bytes(Buffer.from(c.rpId)),bytes(Buffer.from(c.origin))] :
       [struct(Object.fromEntries(roles.map(r => [r,bytes(Buffer.from(c.signers[r].publicKey,'hex'))]))),address(c.verifier)];
     const salt = randomBytes(32); console.error('Deployment salt (public):',salt.toString('hex'));
-    await unsigned(c,Operation.createCustomContract({address:new Address(c.feePayer),wasmHash:Buffer.from(artifact.hash,'hex'),salt,constructorArgs}),args[1]);
+    // Discover deployer authorization; recording does not validate authorization.
+    await unsigned(c,Operation.createCustomContract({address:new Address(c.feePayer),wasmHash:Buffer.from(artifact.hash,'hex'),salt,constructorArgs}),args[1],undefined,'record');
   } else if (cmd === 'inventory') {
     await quorumRule(c);
     const ids: number[] = scValToNative(await read(c,c.account,'rule_ids'));
