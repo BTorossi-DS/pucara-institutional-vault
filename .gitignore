@@ -40,3 +40,10 @@ coverage/
 # Temporary files
 tmp/
 temp/
+# Workspace-local development toolchains
+.tools/
+
+# Rust build artifacts
+/target/
+/test_snapshots/
+**/test_snapshots/

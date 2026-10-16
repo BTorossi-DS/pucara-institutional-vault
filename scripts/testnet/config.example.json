@@ -1,0 +1,31 @@
+{
+  "feePayer": "G_REPLACE_WITH_TESTNET_PUBLIC_ADDRESS",
+  "rpId": "",
+  "origin": "",
+  "signers": {
+    "ceo": {
+      "publicKey": "04_REPLACE_WITH_128_HEX_DIGITS",
+      "credentialId": "BASE64URL_CREDENTIAL_ID"
+    },
+    "cfo": {
+      "publicKey": "04_REPLACE_WITH_128_HEX_DIGITS",
+      "credentialId": "BASE64URL_CREDENTIAL_ID"
+    },
+    "treasury_manager": {
+      "publicKey": "04_REPLACE_WITH_128_HEX_DIGITS",
+      "credentialId": "BASE64URL_CREDENTIAL_ID"
+    }
+  },
+  "verifier": "C_REPLACE_AFTER_DEPLOYMENT",
+  "account": "C_REPLACE_AFTER_DEPLOYMENT",
+  "token": "C_REVIEWED_TEST_ASSET_CONTRACT",
+  "recipient": "G_OR_C_TESTNET_RECIPIENT",
+  "amount": "10000000",
+  "pair": [
+    "ceo",
+    "cfo"
+  ],
+  "expirationLedgers": 60,
+  "maxFeeStroops": "10000000",
+  "signersFile": "tmp/signers.json"
+}
