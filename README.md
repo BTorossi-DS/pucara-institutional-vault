@@ -1,7 +1,40 @@
-# Pucará — Stellar Institutional Vault
+# Pucará Institutional Vault
 
-Institutional Soroban Smart Account prototype using
-OpenZeppelin Stellar Accounts **0.7.2** and Soroban SDK **26.1.0**.
+Pucará Institutional Vault is a non-custodial institutional wallet on Stellar,
+built to coordinate treasury operations through named roles and shared transaction
+authorization. The current product is a **Stellar Testnet prototype**, with a
+public frontend for on-chain queries and demonstration workflows.
+
+**Production frontend:** [pucara-vault.vercel.app](https://pucara-vault.vercel.app).
+“Production” identifies the Vercel hosting environment; the wallet still uses
+**Stellar Testnet only** and is not suitable for real funds.
+
+## Architecture and functional status
+
+- **Stellar Testnet** and a **Soroban Smart Account** using OpenZeppelin Stellar
+  Accounts **0.7.2** and Soroban SDK **26.1.0**.
+- **WebAuthn passkeys** for transaction authorization in the backend flow, with
+  institutional **2-of-3 multisig** across **CEO, CFO and Treasury Manager**.
+- **React, TypeScript and Vite** frontend with **Dashboard**, **Transfers** and
+  **Activity** views. The frontend performs on-chain queries; transfer and approval
+  workflows are demonstration-only and do not submit transactions.
+- Real WebAuthn authorization is implemented in the backend flow, and a multisig
+  transfer has executed on Testnet, as documented below. WebAuthn is **not yet
+  integrated into the public frontend browser flow**; the existing local browser
+  enrollment/authorization tooling is separate from that frontend.
+
+## Current limitations
+
+- Contracts have **no external audit**.
+- The frontend does **not execute real transfers** or collect real passkey approvals.
+- Browser WebAuthn integration in the public frontend remains pending.
+- **Not suitable for holding real funds.** Use Testnet assets only.
+- Anonymous access has not been verified in an independent private session.
+- Transfers, Activity and mobile responsiveness require final validation in
+  Production. Mobile validation and anonymous access are not confirmed.
+
+See the [R8.3 Production checkpoint](docs/frontend-r8-production.md) for the
+reported deployment observations and remaining validation.
 
 ## VERIFIED ON-CHAIN TRANSACTION
 
@@ -53,8 +86,9 @@ constraint can resolve to incompatible v3 test dependencies. This lockfile resol
 it to **2.2.0**, which shares the host's rand_core generation. Preserve the lockfile
 and use `--locked`; review dependency updates rather than regenerating blindly.
 
-No backend custody, public account factory, recovery bypass, production
-credentials or production deployment is included. The browser enrollment utility is for local development. The verifier address supplied at account
+No backend custody, public account factory, recovery bypass or production
+credentials are included. The public frontend is hosted in Vercel Production;
+no Stellar Mainnet deployment is included. The browser enrollment utility is for local development. The verifier address supplied at account
 construction is a trusted bootstrap parameter: verify the reviewed executable hash
 and immutable origin/RP configuration before any future account deployment.
 The contracts and integration code are unaudited. Real-browser CEO+CFO authorization
@@ -81,11 +115,25 @@ F1 app. See the [F2 integration report](docs/frontend-f2.md).
 
 ## Frontend deployment status
 
-A functional Vercel Preview is reported READY for project `pucara`, sourced from
-commit `50f94ce8ec3778b28048314765e56ff6d625e0cd`. The Dashboard was visually
-inspected: it displayed `0.0000000 XLM`, Stellar Testnet as connected, the Smart
-Account and the DEMO warning. The displayed balance was not independently
-verified against Stellar in this checkpoint. Transfers, Activity and mobile
-responsiveness still require validation. The frontend is a read-only/demo
-experience and does not execute real transfers. Production is not yet published.
-See the [Preview checkpoint and Production conditions](docs/frontend-f3-preview.md).
+The Production frontend is published at
+[https://pucara-vault.vercel.app](https://pucara-vault.vercel.app) in Vercel project
+`pucara`. The deployment observed for this checkpoint is `AxSH29q46`, sourced from
+commit `242ab1f` on `feat/pucara-web-mvp`, reported **Ready** and promoted to
+Production through the Vercel Dashboard. The application loaded at the HTTPS
+domain; the Dashboard was verified via a screenshot, with Testnet warnings visible.
+These are reported observations supplied for the documentary checkpoint, not new
+browser tests performed during this documentation update.
+
+Anonymous access has **not** been verified in an independent private session.
+Transfers, Activity and mobile responsiveness still require final Production
+validation. The frontend remains a read-only/demo experience and does not execute
+real transfers. See the [R8.3 Production checkpoint](docs/frontend-r8-production.md).
+
+The earlier Preview, sourced from commit
+`50f94ce8ec3778b28048314765e56ff6d625e0cd`, was reported READY. Its Dashboard
+inspection displayed `0.0000000 XLM`, Stellar Testnet as connected, the Smart
+Account and the DEMO warning. That displayed balance was not independently
+verified against Stellar in that checkpoint. The
+[Preview checkpoint and its Production conditions](docs/frontend-f3-preview.md)
+remain as historical documentation; publication does not establish completion of
+its pending validation tasks.
