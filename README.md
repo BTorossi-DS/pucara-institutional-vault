@@ -78,3 +78,14 @@ For Vercel select **Root Directory `frontend`**, build `npm run build`, and outp
 
 F2 integrates the official PUCARÁ SVG identity from `7050210` into the existing
 F1 app. See the [F2 integration report](docs/frontend-f2.md).
+
+## Frontend deployment status
+
+A functional Vercel Preview is reported READY for project `pucara`, sourced from
+commit `50f94ce8ec3778b28048314765e56ff6d625e0cd`. The Dashboard was visually
+inspected: it displayed `0.0000000 XLM`, Stellar Testnet as connected, the Smart
+Account and the DEMO warning. The displayed balance was not independently
+verified against Stellar in this checkpoint. Transfers, Activity and mobile
+responsiveness still require validation. The frontend is a read-only/demo
+experience and does not execute real transfers. Production is not yet published.
+See the [Preview checkpoint and Production conditions](docs/frontend-f3-preview.md).
